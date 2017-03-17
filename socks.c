@@ -20,9 +20,15 @@
 
 static socks5_cfg_t g_cfg={0};
 static int32_t socks5_srv_init(uint16_t port, int32_t backlog);
+//signal handler to exit the program
 static int32_t socks5_srv_exit();
-
 static int32_t socks5_sockset(int sockfd);
+
+//still need to bed implemented
+static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+static int32_t socks5_sockset(int sockfd);
+
 int main(int argc,char ** argv){
   //first argument is the port number
   g_cfg.port=atoi(argv[1]);
