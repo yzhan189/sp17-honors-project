@@ -25,8 +25,8 @@ static int32_t socks5_srv_exit();
 static int32_t socks5_sockset(int sockfd);
 
 //still need to bed implemented
-static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
-static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents);
+static void accept_cb();
+static void read_cb(）
 static int32_t socks5_sockset(int sockfd);
 
 int main(int argc,char ** argv){
