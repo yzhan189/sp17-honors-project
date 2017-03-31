@@ -8,6 +8,10 @@
   *   the data expected to be encrypted
   *@para len
   *   the size of origin
+  *@para key
+  *   an array of int
+  *@para key_len
+  *   the length of key
 **/
 void encrypt(char* origin,size_t len,int * key,int key_len){
     int i;
