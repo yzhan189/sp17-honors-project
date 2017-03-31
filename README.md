@@ -7,3 +7,5 @@ To do: accept & read
 
 [source link](https://github.com/isayme/socks5/blob/master/src/socks5/socks5.c)
 
+## 3/31/2017
+XOR encryption function
