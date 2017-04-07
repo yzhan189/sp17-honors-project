@@ -24,7 +24,7 @@ static int32_t socks5_srv_init(uint16_t port, int32_t backlog);
 static int32_t socks5_srv_exit();
 static int32_t socks5_sockset(int sockfd);
 
-//still need to be implemented
+//partially implemented
 static void accept_cb(int sockfd);
 static void read_cb(int sockfd);
 static int32_t socks5_sockset(int sockfd);
