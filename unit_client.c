@@ -93,29 +93,6 @@ int connect_to_server(const char *host, const char *port) {
     return ret;
 }
 
-typedef struct _thread_cancel_args {
-    char **buffer;
-    char **msg;
-} thread_cancel_args;
-
-/**
- * Cleanup routine in case the thread gets cancelled.
- * Ensure buffers are freed if they point to valid memory.
- */
-void thread_cancellation_handler(void *arg) {
-    printf("Cancellation handler\n");
-    thread_cancel_args *a = (thread_cancel_args *)arg;
-    char **msg = a->msg;
-    char **buffer = a->buffer;
-    if (*buffer) {
-        free(*buffer);
-        *buffer = NULL;
-    }
-    if (msg && *msg) {
-        free(*msg);
-        *msg = NULL;
-    }
-}
 
 
 /*
