@@ -24,9 +24,9 @@ static int32_t socks5_srv_init(uint16_t port, int32_t backlog);
 static int32_t socks5_srv_exit();
 static int32_t socks5_sockset(int sockfd);
 
-//still need to bed implemented
-static void accept_cb();
-static void read_cb(）
+//still need to be implemented
+static void accept_cb(int sockfd);
+static void read_cb(int sockfd);
 static int32_t socks5_sockset(int sockfd);
 
 int main(int argc,char ** argv){
@@ -80,3 +80,33 @@ static int32_t socks5_srv_init(uint16_t port, int32_t backlog) {
 
     return sockfd;
 }
+
+static void read_cb(int sockfd){
+  struct sockaddr_storage addr;
+  int addrlen = sizeof(addr);
+
+  while(1){
+      char buffer[1000];
+      ssize_t byte_count = recvfrom(sockfd, buffer, sizeof(buffer), 0, &addr, &addrlen);
+      buffer[byte_count] = '\0';
+      printf("Read %zd chars\n", byte_count);
+      printf("===\n");
+      printf("%s\n", buffer);
+  }
+
+
+
+};
+
+static void accept_cb(int sockfd){
+  struct sockaddr_in client_addr;
+  socklen_t client_len = sizeof(client_addr);
+  int client_fd = 0;
+  int remote_fd;
+
+  client_fd = accept(sockfd, &client_addr, &client_len);
+  if(client_fd == -1) {
+    perror("accpet fail");
+    exit(1);
+  }
+};
