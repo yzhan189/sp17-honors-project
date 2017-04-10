@@ -20,7 +20,23 @@ static volatile int serverSocket;
 // void *write_to_server(void *arg);
 // void *read_from_server(void *arg);
 void close_program(int signal);
+ssize_t write_to_server(int socket, const char* url, size_t count){
+  printf("SENDING: %s\n", url);
+  printf("===\n");
+  ssize_t bytewrite = 0;
+  ssize_t totalwrite = 0;
+  while(count > 0) {
+    bytewrite = write(serverSocket , url, strlen(url));
+    if(bytewrite == -1) {
+      return -1;
+    }
+    count -= bytewrite;
+    totalwrite += bytewrite;
 
+  }
+  return bytewrite;
+}
+void read_from_client(int socket);
 void handler(int signal) {
   close_program(signal);
 }
@@ -42,7 +58,7 @@ void close_server_connection() {
  *
  * Returns integer of valid file descriptor, or exit(1) on failure.
  */
-int connect_to_server(const char *host, const char *port) {
+int connect_to_server(const char *host, const char *port, const char *url) {
     /*QUESTION 1*/
     // 1) What is a socket?
     /*QUESTION 2*/
@@ -78,13 +94,24 @@ int connect_to_server(const char *host, const char *port) {
       perror("connect");
       exit(1);
     }
-
-    char *buf = "GET / HTTP/1.0\r\n\r\n";
-    printf("SENDING: %s", buf);
+    //send info
+    //char *buf = "GET / HTTP/1.0\r\n\r\n";
+    size_t count = strlen(url);
+    printf("SENDING: %s\n", url);
     printf("===\n");
-    write(serverSocket , buf, strlen(buf));
-
-
+    ssize_t bytewrite = 0;
+    ssize_t totalwrite = 0;
+    while(count > 0) {
+      bytewrite = write(serverSocket , url, strlen(url));
+      if(bytewrite == -1) {
+        return -1;
+      }
+      count -= bytewrite;
+      totalwrite += bytewrite;
+    }
+    fprintf(stderr, "total sent: %zu\n", totalwrite);
+    // sleep(3);
+    //read response
     char resp[1000];
     int len = read(serverSocket , resp, 999);
     resp[len] = '\0';
@@ -109,8 +136,8 @@ void close_program(int signal) {
 
 int main(int argc, char **argv) {
 
-    if (argc < 2 || argc > 3) {
-        fprintf(stderr, "Usage: %s <address> <port>\n",
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s <address> <port> <url>\n",
                 argv[0]);
         exit(1);
     }
@@ -127,11 +154,11 @@ int main(int argc, char **argv) {
     // create_windows(output_filename);
     // atexit(destroy_windows);
 
-    serverSocket = connect_to_server(argv[1], argv[2]);
+    serverSocket = connect_to_server(argv[1], argv[2], argv[3]);
 
     // pthread_create(&threads[0], NULL, write_to_server, (void *)argv[3]);
     // pthread_create(&threads[1], NULL, read_from_server, NULL);
-// 
+//
     // pthread_join(threads[0], NULL);
     // pthread_join(threads[1], NULL);
 
