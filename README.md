@@ -9,3 +9,7 @@ To do: accept & read
 
 ## 3/31/2017
 XOR encryption function
+
+## 4/10/2017
+To do: 1. implement write and read between server and client
+       2. implement clean up(SUPER ANNOYING)
