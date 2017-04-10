@@ -150,9 +150,16 @@ void run_server(char *port) {
       printf("Read %d chars\n", len);
       printf("===\n");
       printf("%s\n", buffer);
+
+      // sleep(3);
+      char *resp = "Got yo!";
+      write(clients[clientsCount] , resp, strlen(resp));
+
       pthread_mutex_lock(&mutex);
       clientsCount ++;
       pthread_mutex_unlock(&mutex);
+
+
     }
 }
 
