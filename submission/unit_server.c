@@ -16,16 +16,17 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 
-#define MAX_CLIENTS 8
 
-// void *process_client(void *p);
+#define MAX_CLIENTS 8
+void* connect_to_remote(void *p) ;
 
 static volatile int endSession;
-
+static volatile int sock_fd;
 static volatile int clientsCount;
 static volatile int clients[MAX_CLIENTS];
-
+pthread_t tid[MAX_CLIENTS];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+struct addrinfo *result;
 
 void printmyip(int required_family) {
     // required_family = AF_INET6 or AF_INET; // Change to AF_INET6 for IPv6
@@ -50,9 +51,11 @@ void printmyip(int required_family) {
  * Used to set flag to end server.
  */
 void close_server() {
-  fprintf(stderr, "close!\n");
+    fprintf(stderr, "close!\n");
     endSession = 1;
-    // add any additional flags here you want.
+    cleanup();
+    freeaddrinfo(result);
+    pthread_exit(NULL);
 }
 
 /**
@@ -64,9 +67,14 @@ void cleanup() {
     // Your code here.
     int i;
     for(i = 0; i< MAX_CLIENTS; i ++) {
-      shutdown(clients[i] , SHUT_RDWR);
-      close(clients[i]);
+      pthread_cancel(tid[i]);
+      if(clients[i] != -1) {
+        shutdown(clients[i] , SHUT_RDWR);
+        close(clients[i]);
+      }
     }
+    shutdown(sock_fd , SHUT_RDWR);
+    close(sock_fd);
 }
 
 /**
@@ -90,7 +98,7 @@ void run_server(char *port) {
     // 3) What is the difference between SOCK_STREAM and SOCK_DGRAM?
     // signal(SIGINT, close_server);
     int s;
-    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     /*QUESTION 8*/
     // 8) What is setsockopt?
@@ -132,38 +140,69 @@ void run_server(char *port) {
     struct sockaddr_in *result_addr = (struct sockaddr_in *) result->ai_addr;
     printf("Listening on file descriptor %d, port %d\n", sock_fd, ntohs(result_addr->sin_port));
 
-    while(1)
-    {
-      printf("Waiting for connection...\n");
+    while(!endSession) {
+
       pthread_mutex_lock(&mutex);
-      clients[clientsCount] = accept(sock_fd, NULL, NULL);
+      if(clientsCount >= MAX_CLIENTS) {
+        pthread_mutex_unlock(&mutex);
+
+        continue;
+      }
+      int curr_client = clientsCount;
       pthread_mutex_unlock(&mutex);
 
-
-
-      printf("Connection made: client_fd=%d\n", clients[clientsCount]);
-
-      char buffer[1000];
-      int len = read(clients[clientsCount], buffer, sizeof(buffer) - 1);
-      buffer[len] = '\0';
-
-      printf("Read %d chars\n", len);
-      printf("===\n");
-      printf("%s\n", buffer);
-
-      // sleep(3);
-      char *resp = "Got yo!";
-      write(clients[clientsCount] , resp, strlen(resp));
-
+      printf("Waiting for connection...\n");
+      struct sockaddr client_addr;
+      bzero(&client_addr, sizeof(struct sockaddr));
+      socklen_t socklen = (socklen_t)sizeof(struct sockaddr);
+      int client_fd = accept(sock_fd, &client_addr, &socklen);
+      printf("Connection made: client_fd=%d\n", client_fd);
       pthread_mutex_lock(&mutex);
+      clients[curr_client] = client_fd;
+      // hand off to function
       clientsCount ++;
       pthread_mutex_unlock(&mutex);
-
-
+      pthread_t tid;
+      if(!pthread_create(&tid[curr_client], NULL, connect_to_remote, (void *)(intptr_t)curr_client)) {
+        perror("thread");
+        continue;
+      }
     }
+    freeaddrinfo(result);
 }
 
+void* connect_to_remote(void *p) {
+    pthread_detach(pthread_self());
+    intptr_t clientId = (intptr_t)p;
+    ssize_t retval = 1;
+    char *buffer = NULL;
 
+    while (retval > 0 && endSession == 0) {
+        retval = get_message_size(clients[clientId]);
+        if (retval > 0) {
+            buffer = calloc(1, retval);
+            retval = read_all_from_socket(clients[clientId], buffer, retval);
+
+        }
+        if (retval > 0)
+          // fprintf(stderr, "\n\n\n\tread size: %zu\n\n\n\tcontent: %s\n\n\n", retval, buffer);
+
+            write_to_clients(buffer, retval);
+
+        free(buffer);
+        buffer = NULL;
+    }
+
+    printf("User %d left\n", (int)clientId);
+    close(clients[clientId]);
+
+    pthread_mutex_lock(&mutex);
+    clients[clientId] = -1;
+    clientsCount--;
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
+}
 
 int main(int argc, char **argv) {
     if (argc != 2) {
