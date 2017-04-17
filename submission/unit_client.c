@@ -1,8 +1,7 @@
-/**
- * Chatroom Lab
- * CS 241 - Spring 2017
+/* *
+ *  CS296 Honor Project
  */
-
+#include "utils.h"
 #include <errno.h>
 #include <netdb.h>
 #include <pthread.h>
