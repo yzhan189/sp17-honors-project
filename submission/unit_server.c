@@ -203,18 +203,30 @@ void* connect_to_remote(void *p) {
     write(out_serverSocket, request, strlen(request));
 
     int len = 0;
+    int success = 0;
     do {
         char resp[1000] = {0};
         len = read(out_serverSocket, resp, 999);
         resp[len] = '\0';
-        printf("%s\n", resp);    
+        write(clients[clientId], resp, strlen(resp));
+        if(len) {
+            if(success == 0) {
+                success = 1;
+            }
+        }
+        // printf("%s\n", resp);    
     }while(len);
-    
+
+    // if(success) {
+    //     char *buffer = "Connection made successfully!\r\n\r\n";
+    //     // printf("SENDING BACK TO CLIENT: %s", buffer);
+    //     printf("===\n");
+    //     write(clients[clientId], buffer, strlen(buffer));
+    // }
 
     // return 0;
          
 
-    printf("===\n");
 
 
 
