@@ -21,7 +21,7 @@
 void* connect_to_remote(void *p) ;
 
 static volatile int endSession;
-static volatile int sock_fd;
+static volatile int serverSocket;
 static volatile int clientsCount;
 static volatile int clients[MAX_CLIENTS];
 pthread_t tid[MAX_CLIENTS];
@@ -46,17 +46,6 @@ void printmyip(int required_family) {
         }
     }
 }
-/**
- * Signal handler for SIGINT.
- * Used to set flag to end server.
- */
-void close_server() {
-    fprintf(stderr, "close!\n");
-    endSession = 1;
-    cleanup();
-    freeaddrinfo(result);
-    pthread_exit(NULL);
-}
 
 /**
  * Cleanup function called in main after `run_server` exits.
@@ -73,9 +62,22 @@ void cleanup() {
         close(clients[i]);
       }
     }
-    shutdown(sock_fd , SHUT_RDWR);
-    close(sock_fd);
+    shutdown(serverSocket , SHUT_RDWR);
+    close(serverSocket);
 }
+/**
+ * Signal handler for SIGINT.
+ * Used to set flag to end server.
+ */
+void close_server() {
+    fprintf(stderr, "close!\n");
+    endSession = 1;
+    cleanup();
+    freeaddrinfo(result);
+    pthread_exit(NULL);
+}
+
+
 
 /**
  * Sets up a server connection.
@@ -98,12 +100,12 @@ void run_server(char *port) {
     // 3) What is the difference between SOCK_STREAM and SOCK_DGRAM?
     // signal(SIGINT, close_server);
     int s;
-    sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     /*QUESTION 8*/
     // 8) What is setsockopt?
     int optval = 1;
-    setsockopt(sock_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
     /*QUESTION 4*/
     // 4) Why is it important to clear all the values the addrinfo struct before using it in getaddrinfo?
@@ -115,7 +117,6 @@ void run_server(char *port) {
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-
     /*QUESTION 6*/
     // 6) What does getaddrinfo do?
     s = getaddrinfo(NULL, port, &hints, &result);
@@ -126,20 +127,19 @@ void run_server(char *port) {
 
     /*QUESTION 9*/
     // 9) What does bind do?
-    if (bind(sock_fd, result->ai_addr, result->ai_addrlen) != 0) {
+    if (bind(serverSocket, result->ai_addr, result->ai_addrlen) != 0) {
         perror("bind()");
         exit(1);
     }
 
     /*QUESTION 10*/
     // 10) What does listen do?
-    if (listen(sock_fd, 10) != 0) {
+    if (listen(serverSocket, 10) != 0) {
         perror("listen()");
         exit(1);
     }
     struct sockaddr_in *result_addr = (struct sockaddr_in *) result->ai_addr;
-    printf("Listening on file descriptor %d, port %d\n", sock_fd, ntohs(result_addr->sin_port));
-
+    printf("Listening on file descriptor %d, port %d\n", serverSocket, ntohs(result_addr->sin_port));
     while(!endSession) {
 
       pthread_mutex_lock(&mutex);
@@ -155,18 +155,19 @@ void run_server(char *port) {
       struct sockaddr client_addr;
       bzero(&client_addr, sizeof(struct sockaddr));
       socklen_t socklen = (socklen_t)sizeof(struct sockaddr);
-      int client_fd = accept(sock_fd, &client_addr, &socklen);
+      int client_fd = accept(serverSocket, &client_addr, &socklen);
       printf("Connection made: client_fd=%d\n", client_fd);
       pthread_mutex_lock(&mutex);
       clients[curr_client] = client_fd;
       // hand off to function
       clientsCount ++;
       pthread_mutex_unlock(&mutex);
-      pthread_t tid;
+      // pthread_t tid;
       if(!pthread_create(&tid[curr_client], NULL, connect_to_remote, (void *)(intptr_t)curr_client)) {
         perror("thread");
         continue;
       }
+
     }
     freeaddrinfo(result);
 }
@@ -176,22 +177,46 @@ void* connect_to_remote(void *p) {
     intptr_t clientId = (intptr_t)p;
     ssize_t retval = 1;
     char *buffer = NULL;
+    int s;
+    int out_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    while (retval > 0 && endSession == 0) {
-        retval = get_message_size(clients[clientId]);
-        if (retval > 0) {
-            buffer = calloc(1, retval);
-            retval = read_all_from_socket(clients[clientId], buffer, retval);
+    struct addrinfo hints, *result;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET; /* IPv4 only */
+    hints.ai_socktype = SOCK_STREAM; /* TCP */
 
-        }
-        if (retval > 0)
-          // fprintf(stderr, "\n\n\n\tread size: %zu\n\n\n\tcontent: %s\n\n\n", retval, buffer);
-
-            write_to_clients(buffer, retval);
-
-        free(buffer);
-        buffer = NULL;
+    s = getaddrinfo("www.google.com", "80", &hints, &result);
+    if (s != 0) {
+            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+            exit(1);
     }
+
+    if(connect(out_serverSocket, result->ai_addr, result->ai_addrlen) == -1){
+                perror("connect");
+                exit(2);
+    }
+
+
+    char *request = "GET / HTTP/1.0\r\n\r\n";
+    printf("SENDING: %s", request);
+    printf("===\n");
+    write(out_serverSocket, request, strlen(request));
+
+    int len = 0;
+    do {
+        char resp[1000] = {0};
+        len = read(out_serverSocket, resp, 999);
+        resp[len] = '\0';
+        printf("%s\n", resp);    
+    }while(len);
+    
+
+    // return 0;
+         
+
+    printf("===\n");
+
+
 
     printf("User %d left\n", (int)clientId);
     close(clients[clientId]);
