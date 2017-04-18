@@ -36,16 +36,15 @@ ssize_t write_to_server(int socket, const char* url, size_t count){
   return bytewrite;
 }
 void read_from_client(int socket);
-void handler(int signal) {
-  close_program(signal);
-}
+
 /**
  * Shuts down connection with 'serverSocket'.
  * Called by close_program upon SIGINT.
  */
 void close_server_connection() {
     // Your code here
-    signal(SIGINT, handler);
+    shutdown(serverSocket, SHUT_RDWR);
+    close(serverSocket);
 }
 
 /**
@@ -66,7 +65,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     // 3) What is the difference between SOCK_STREAM and SOCK_DGRAM?
 
     int s;
-	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
 
     /*QUESTION 4*/
@@ -141,25 +140,12 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    // char *output_filename;
-    // if (argc == 5) {
-    //     output_filename = argv[4];
-    // } else {
-    //     output_filename = NULL;
-    // }
 
-    // Setup signal handler.
     signal(SIGINT, close_program);
     // create_windows(output_filename);
     // atexit(destroy_windows);
 
     serverSocket = connect_to_server(argv[1], argv[2], argv[3]);
-
-    // pthread_create(&threads[0], NULL, write_to_server, (void *)argv[3]);
-    // pthread_create(&threads[1], NULL, read_from_server, NULL);
-//
-    // pthread_join(threads[0], NULL);
-    // pthread_join(threads[1], NULL);
 
     return 0;
 }
