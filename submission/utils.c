@@ -2,7 +2,7 @@
  * Networking
  * CS 241 - Spring 2017
  */
-#include "common.h"
+#include "utils.h"
 #include <netdb.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+
 ssize_t read_from_socket(int socket, char *buffer, size_t count) {
    // Your Code Here
    if(socket == -1 || socket == 0) {
