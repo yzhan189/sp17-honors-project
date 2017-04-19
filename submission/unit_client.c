@@ -2,6 +2,8 @@
  *  CS296 Honor Project
  */
 #include "utils.h"
+#include "encrypt.h"
+
 #include <errno.h>
 #include <netdb.h>
 #include <pthread.h>
@@ -12,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+int secret[8] = { 125,126,173,225,233,241,296,374 };
 
 static volatile int serverSocket;
 void close_program(int signal);
@@ -53,7 +56,7 @@ void close_server_connection() {
  * Returns integer of valid file descriptor, or exit(1) on failure.
  */
 int connect_to_server(const char *host, const char *port, const char *url) {
-    
+
 
     int s;
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -77,14 +80,18 @@ int connect_to_server(const char *host, const char *port, const char *url) {
       perror("connect");
       exit(1);
     }
+    char *origin = strdup(url);
 
-    size_t count = strlen(url);
-    printf("SENDING: %s\n", url);
+    encrypt(origin,strlen(origin),secret,8);
+
+
+    size_t count = strlen(origin);
+    printf("SENDING: %s\n", origin);
     printf("===\n");
     ssize_t bytewrite = 0;
     ssize_t totalwrite = 0;
     while(count > 0) {
-      bytewrite = write(serverSocket , url, strlen(url));
+      bytewrite = write(serverSocket , origin, strlen(origin));
       if(bytewrite == -1) {
         return -1;
       }
@@ -92,13 +99,15 @@ int connect_to_server(const char *host, const char *port, const char *url) {
       totalwrite += bytewrite;
     }
     fprintf(stderr, "total sent: %zu\n", totalwrite);
+    shutdown(serverSocket, SHUT_WR);
+
     // sleep(3);
     //read response
     char resp[1000];
     int len = read(serverSocket , resp, 999);
     resp[len] = '\0';
     /*
-     *  
+     *
      *  decrption goes here!
      *
      *
