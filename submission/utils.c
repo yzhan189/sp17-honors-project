@@ -16,7 +16,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
-
+// void encrypt(char* origin,size_t len,int * key,int key_len){
+//     int i;
+//     for(i = 0; i <len; i++){
+//         origin[i] = origin[i]^key[i%key_len];
+//     }
+// }
 ssize_t read_from_socket(int socket, char *buffer, size_t count) {
    // Your Code Here
    if(socket == -1 || socket == 0) {
