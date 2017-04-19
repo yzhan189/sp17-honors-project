@@ -80,18 +80,30 @@ int connect_to_server(const char *host, const char *port, const char *url) {
       perror("connect");
       exit(1);
     }
-    char *origin = strdup(url);
+    char *msg = calloc(1, strlen(url) + 1);
+    strcpy(msg, url);
+    msg[strlen(url)] = '\0';
 
-    encrypt(origin,strlen(origin),secret,8);
+    fprintf(stderr, "BEFORE ENCRPTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
+    encrypt(msg,strlen(msg),secret,8);
+    msg[strlen(url)] = '\0';
+    fprintf(stderr, "AFTER ENCRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
+    // encrypt(msg,strlen(msg),secret,8);
+    // msg[strlen(url)] = '\0';
+    // fprintf(stderr, "DECRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
+    // if(strcmp(msg, url)) {
+    //   perror("encrypt\n");
+    // };
 
 
-    size_t count = strlen(origin);
-    printf("SENDING: %s\n", origin);
+    size_t count = strlen(msg);
+    printf("SENDING: %s\n", msg);
     printf("===\n");
+    // return 0;
     ssize_t bytewrite = 0;
     ssize_t totalwrite = 0;
     while(count > 0) {
-      bytewrite = write(serverSocket , origin, strlen(origin));
+      bytewrite = write(serverSocket , msg, strlen(msg));
       if(bytewrite == -1) {
         return -1;
       }
@@ -100,7 +112,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     }
     fprintf(stderr, "total sent: %zu\n", totalwrite);
     shutdown(serverSocket, SHUT_WR);
-
+    return 0;
     // sleep(3);
     //read response
     char resp[1000];
