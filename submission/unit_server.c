@@ -2,6 +2,8 @@
  *  CS296 Honor Project
  */
 #include "utils.h"
+#include "encrypt.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
@@ -15,7 +17,14 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
-
+// int secret_server[8] = { 125,126,173,225,233,241,296,374 };
+//
+// void encrypt(char* origin,size_t len,int * key,int key_len){
+//     int i;
+//     for(i = 0; i <len; i++){
+//         origin[i] = origin[i]^key[i%key_len];
+//     }
+// }
 
 #define MAX_CLIENTS 8
 void* connect_to_remote(void *p) ;
@@ -160,6 +169,11 @@ void* connect_to_remote(void *p) {
     intptr_t clientId = (intptr_t)p;
     ssize_t retval = 1;
     char *buffer = NULL;
+    char resp[1000];
+    int len1 = read(serverSocket , resp, 999);
+    resp[len1] = '\0';
+    fprintf(stderr, "%s\n", resp);
+    return NULL;
     int s;
     int out_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -192,7 +206,7 @@ void* connect_to_remote(void *p) {
         len = read(out_serverSocket, resp, 999);
         resp[len] = '\0';
         /*
-         *  
+         *
          *  encrption goes here!
          *
          *
@@ -203,7 +217,7 @@ void* connect_to_remote(void *p) {
                 success = 1;
             }
         }
-        // printf("%s\n", resp);    
+        // printf("%s\n", resp);
     }while(len);
 
     // if(success) {
@@ -214,7 +228,7 @@ void* connect_to_remote(void *p) {
     // }
 
     // return 0;
-         
+
 
 
 
