@@ -92,48 +92,32 @@ void close_server() {
  *
  */
 void run_server(char *port) {
-    /*QUESTION 1*/
-    // 1) What is a socket?
-    /*QUESTION 2*/
-    // 2) What is the difference between the domains AF_INET and AF_UNIX?
-    /*QUESTION 3*/
-    // 3) What is the difference between SOCK_STREAM and SOCK_DGRAM?
-    // signal(SIGINT, close_server);
+
     int s;
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    /*QUESTION 8*/
-    // 8) What is setsockopt?
+
     int optval = 1;
     setsockopt(serverSocket, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
-    /*QUESTION 4*/
-    // 4) Why is it important to clear all the values the addrinfo struct before using it in getaddrinfo?
     struct addrinfo hints, *result;
     memset(&hints, 0, sizeof(struct addrinfo));
 
-    /*QUESTION 5*/
-    // 5) What are ai_family and ai_socktype?
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
-    /*QUESTION 6*/
-    // 6) What does getaddrinfo do?
+
     s = getaddrinfo(NULL, port, &hints, &result);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(1);
     }
 
-    /*QUESTION 9*/
-    // 9) What does bind do?
     if (bind(serverSocket, result->ai_addr, result->ai_addrlen) != 0) {
         perror("bind()");
         exit(1);
     }
 
-    /*QUESTION 10*/
-    // 10) What does listen do?
     if (listen(serverSocket, 10) != 0) {
         perror("listen()");
         exit(1);
@@ -162,7 +146,6 @@ void run_server(char *port) {
       // hand off to function
       clientsCount ++;
       pthread_mutex_unlock(&mutex);
-      // pthread_t tid;
       if(!pthread_create(&tid[curr_client], NULL, connect_to_remote, (void *)(intptr_t)curr_client)) {
         perror("thread");
         continue;
