@@ -97,7 +97,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
 
 
     size_t count = strlen(msg);
-    printf("SENDING: %s\n", msg);
+    printf("SENDING [%lu] bytes: %s\n", strlen(url), msg);
     printf("===\n");
     // return 0;
     ssize_t bytewrite = 0;
@@ -112,12 +112,18 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     }
     fprintf(stderr, "total sent: %zu\n", totalwrite);
     shutdown(serverSocket, SHUT_WR);
-    return 0;
+    // return 0;
     // sleep(3);
     //read response
     char resp[1000];
     int len = read(serverSocket , resp, 999);
     resp[len] = '\0';
+    encrypt(resp,strlen(resp),secret,8);
+    resp[strlen(resp)] = '\0';
+    fprintf(stderr, "## DECRPYTION SERVER RESPONSE:[%s](lem: %lu)\n",resp,strlen(resp));
+    // if(strcmp(resp, url)) {
+    //   perror("decrypt\n");
+    // };
     /*
      *
      *  decrption goes here!
