@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
-// int secret_server[8] = { 125,126,173,225,233,241,296,374 };
+int secret2[8] = { 125,126,173,225,233,241,296,374 };
 //
 // void encrypt(char* origin,size_t len,int * key,int key_len){
 //     int i;
@@ -25,7 +25,7 @@
 //         origin[i] = origin[i]^key[i%key_len];
 //     }
 // }
-
+char *url = "www.google.com";
 #define MAX_CLIENTS 8
 void* connect_to_remote(void *p) ;
 
@@ -169,11 +169,24 @@ void* connect_to_remote(void *p) {
     intptr_t clientId = (intptr_t)p;
     ssize_t retval = 1;
     char *buffer = NULL;
+    /*
+     *  read request from client
+     */
     char resp[1000];
-    int len1 = read(serverSocket , resp, 999);
+    int len1 = read(clients[clientId], resp, 999);
     resp[len1] = '\0';
-    fprintf(stderr, "%s\n", resp);
-    return NULL;
+    fprintf(stderr, "## RAW MESSAGE RECEIVED: %s\n", resp);
+    /*
+     * decrption
+     */
+    // char *msg = calloc(1, len1);
+    encrypt(resp,strlen(resp),secret2,8);
+    // [strlen(url)] = '\0';
+    fprintf(stderr, "DECRPYTION:[%s](len: %lu)\n",resp,strlen(resp));
+    if(strcmp(resp, url)) {
+      perror("encrypt\n");
+    };
+    // return NULL;
     int s;
     int out_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -182,7 +195,7 @@ void* connect_to_remote(void *p) {
     hints.ai_family = AF_INET; /* IPv4 only */
     hints.ai_socktype = SOCK_STREAM; /* TCP */
 
-    s = getaddrinfo("www.google.com", "80", &hints, &result);
+    s = getaddrinfo(resp, "80", &hints, &result);
     if (s != 0) {
             fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
             exit(1);
@@ -211,12 +224,15 @@ void* connect_to_remote(void *p) {
          *
          *
          */
-        write(clients[clientId], resp, strlen(resp));
-        if(len) {
+         encrypt(resp,strlen(resp),secret2,8);
+         resp[len] = '\0';
+         fprintf(stderr, "## RAW SERVER RESPONSE: [%s](len: %lu)\n", resp, strlen(resp));
+         write(clients[clientId], resp, strlen(resp));
+         if(len) {
             if(success == 0) {
                 success = 1;
             }
-        }
+          }
         // printf("%s\n", resp);
     }while(len);
 
