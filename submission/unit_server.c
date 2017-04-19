@@ -208,6 +208,12 @@ void* connect_to_remote(void *p) {
         char resp[1000] = {0};
         len = read(out_serverSocket, resp, 999);
         resp[len] = '\0';
+        /*
+         *  
+         *  encrption goes here!
+         *
+         *
+         */
         write(clients[clientId], resp, strlen(resp));
         if(len) {
             if(success == 0) {
