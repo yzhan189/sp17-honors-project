@@ -42,34 +42,37 @@ int main(int argc, char **argv)
     printf("Listening on file descriptor %d, port %d\n", sock_fd, ntohs(result_addr->sin_port));
 
     while(1){
-	printf("Waiting for connection...\n");
-	int client_fd = accept(sock_fd, NULL, NULL);
-	printf("Connection made: client_fd=%d\n", client_fd);
+        printf("Waiting for connection...\n");
+        int client_fd = accept(sock_fd, NULL, NULL);
+        printf("Connection made: client_fd=%d\n", client_fd);
 
-	char buffer[1024];
-	int len = read(client_fd, buffer, 1024);
-	if(len > 0){
-	    buffer[len] = '\0';
-		printf("%s\n", buffer);
-	}
+        char buffer[1024];
+        int len = read(client_fd, buffer, 1024);
+        if(len > 0){
+            buffer[len] = '\0';
+          printf("%s\n", buffer);
+        }
 
-        FILE* file = fopen("dog.jpg","r");
+        FILE* file = fopen("dog.png","r");
+        if(!file) perror("fopen");
         if(file) {
           fseek(file,0, SEEK_END);
           long size = ftell(file);
           fseek(file,0,SEEK_SET);
-          printf("Sending %ld bytes\n", size);
+          fprintf(stderr,"File is %ld bytes\n", size);
 
           char*buf = malloc(size);
-          fread(buf,1,size,file);
+          int read = fread(buf,1,size,file);
+          fprintf(stderr, "Read %d bytes from file\n",read );
           
-		  size_t sent_bytes = 0;
-		  while(1){
-			if(sent_bytes >= size)
-				break;
-          		size_t write_size = write(client_fd, buf, size);
-			sent_bytes += write_size;
-		  }
+          size_t sent_bytes = 0;
+          while(1){
+            if(sent_bytes >= size)
+              break;
+            int write_size = write(client_fd, buf, size);
+            fprintf(stderr, "Wrote %d bytes\n to client_fd %d",write_size,client_fd );
+            sent_bytes += write_size;
+          }
 
           fclose(file);
           free(buf);
