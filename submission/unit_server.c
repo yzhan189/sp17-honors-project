@@ -19,7 +19,7 @@
 #include <ifaddrs.h>
 int secret2[8] = { 125,126,173,225,233,241,296,374 };
 //
-// void encrypt(char* origin,size_t len,int * key,int key_len){
+// void encrypt_(char* origin,size_t len,int * key,int key_len){
 //     int i;
 //     for(i = 0; i <len; i++){
 //         origin[i] = origin[i]^key[i%key_len];
@@ -189,8 +189,8 @@ void run_server(char *port) {
           printf("Success!\n" );
       }
       else{
-          printf("Fail! Exiting server\n" );
-          exit(1);
+          printf("Fail! closing this connection\n" );
+          close(client_fd);
       }
       pthread_mutex_lock(&mutex);
       clients[curr_client] = client_fd;
@@ -222,11 +222,11 @@ void* connect_to_remote(void *p) {
      * decrption
      */
     // char *msg = calloc(1, len1);
-    encrypt(resp,strlen(resp),secret2,8);
+    encrypt_(resp,strlen(resp),secret2,8);
     // [strlen(url)] = '\0';
     fprintf(stderr, "DECRPYTION:[%s](len: %lu)\n",resp,strlen(resp));
     if(strcmp(resp, url)) {
-      perror("encrypt\n");
+      perror("encrypt_\n");
     };
     // return NULL;
     int s;
@@ -266,7 +266,7 @@ void* connect_to_remote(void *p) {
          *
          *
          */
-         encrypt(resp,strlen(resp),secret2,8);
+         encrypt_(resp,strlen(resp),secret2,8);
          resp[len] = '\0';
          fprintf(stderr, "## RAW SERVER RESPONSE: [%s](len: %lu)\n", resp, strlen(resp));
          write(clients[clientId], resp, strlen(resp));
