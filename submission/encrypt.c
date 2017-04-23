@@ -14,7 +14,7 @@
   *@para key_len
   *   the length of key
 **/
-void encrypt(char* origin,size_t len,int * key,int key_len){
+void encrypt_(char* origin,size_t len,int * key,int key_len){
     int i;
     for(i = 0; i <len; i++){
         origin[i] = origin[i]^key[i%key_len];
