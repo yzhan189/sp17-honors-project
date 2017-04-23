@@ -66,7 +66,7 @@ void printmyip(int required_family) {
 void cleanup() {
     // Your code here.
     int i;
-    for(i = 0; i< MAX_CLIENTS; i ++) {
+    for(i = 0; i< clientsCount; i ++) {
       pthread_cancel(tid[i]);
       if(clients[i] != -1) {
         shutdown(clients[i] , SHUT_RDWR);
