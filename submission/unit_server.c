@@ -227,6 +227,21 @@ void* connect_to_remote(void *p) {
     encrypt_(resp,strlen(resp),secret2,8);
     // [strlen(url)] = '\0';
     fprintf(stderr, "DECRPYTION:[%s](len: %lu)\n",resp,strlen(resp));
+	
+    fprintf(stderr, "Start parsing\n" ); 
+    char req[255];
+    size_t i =0;
+    for (;i<strlen(resp);i++){
+      if(resp[i]=='_') {
+        strcpy(req,&resp[i+1]);
+        fprintf(stderr, "req is %s\n", req);
+        resp[i]=0; 
+        break;
+      }
+    }
+    fprintf(stderr, "url is %s(%zu), request is %s(%zu) \n", resp,strlen(resp),req,strlen(req));
+
+	
     if(strcmp(resp, url)) {
       perror("encrypt_\n");
     };
@@ -250,8 +265,15 @@ void* connect_to_remote(void *p) {
                 exit(2);
     }
 
-
-    char *request = "GET / HTTP/1.0\r\n\r\n";
+    /*  ====  */
+    char *request=NULL;
+    if(strcmp(req,"get")==0) request = "GET / HTTP/1.0\r\n\r\n";
+    else if(strcmp(req,"head")==0) request = "HEAD / HTTP/1.0\r\n\r\n";
+    else if(strcmp(req,"options")==0) request = "OPTIONS / HTTP/1.0\r\n\r\n";
+    else if(strcmp(req,"trace")==0) request = "TRACE / HTTP/1.0\r\n\r\n";
+    else if(strcmp(req,"post")==0) request = "POST / HTTP/1.0\r\n\r\n";
+    /*  ====  */
+    
     printf("SENDING: %s", request);
     printf("===\n");
     write(out_serverSocket, request, strlen(request));
