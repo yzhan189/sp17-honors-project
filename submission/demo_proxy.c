@@ -297,8 +297,8 @@ void* connect_to_remote(void *p) {
          *
          */
         fprintf(stderr, "resp is %zu\n", strlen(resp));
-         //encrypt_(resp,strlen(resp),secret2,8);
-         resp[strlen(resp)] = '\0';
+         encrypt_(resp,len,secret2,8);
+         resp[len] = '\0';
          fprintf(stderr, "resp is %zu\n", strlen(resp));
          fprintf(stderr, "## RAW SERVER RESPONSE: [%s](len: %lu)\n", resp, strlen(resp));
          int ret = write(clients[clientId], resp, len);
