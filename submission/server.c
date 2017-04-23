@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
+/** to be implemented: read clients' message and send back website data */
 int main(int argc, char **argv)
 {
     int s;
