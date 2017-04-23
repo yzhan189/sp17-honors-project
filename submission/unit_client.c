@@ -56,7 +56,7 @@ void close_server_connection() {
  *
  * Returns integer of valid file descriptor, or exit(1) on failure.
  */
-int connect_to_server(const char *host, const char *port, const char *url) {
+int connect_to_server(const char *host, const char *port, const char *url,const char* request) {
 
 
     int s;
@@ -96,15 +96,15 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     if(strncmp(login_info,"Fail!!!!",8)==0){
         exit(1);
     }
-    char *msg = calloc(1, strlen(url) + 1);
+    char *msg = calloc(1, strlen(url) + 1+1+strlen(request));
     strcpy(msg, url);
-    msg[strlen(url)] = '\0';
+    strcat(msg,"_");
+    strcat(msg,request);
 
     fprintf(stderr, "BEFORE ENCRPTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
     encrypt_(msg,strlen(msg),secret,8);
-    msg[strlen(url)] = '\0';
+    msg[strlen(msg)] = '\0';
     fprintf(stderr, "AFTER ENCRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
-    // encrypt_(msg,strlen(msg),secret,8);
     // msg[strlen(url)] = '\0';
     // fprintf(stderr, "DECRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
     // if(strcmp(msg, url)) {
@@ -113,7 +113,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
 
 
     size_t count = strlen(msg);
-    printf("SENDING [%lu] bytes: %s\n", strlen(url), msg);
+    printf("SENDING [%lu] bytes: %s\n", strlen(msg), msg);
     printf("===\n");
     // return 0;
     ssize_t bytewrite = 0;
@@ -164,8 +164,8 @@ void close_program(int signal) {
 
 int main(int argc, char **argv) {
 
-    if (argc != 6) {
-        fprintf(stderr, "Usage: %s <address> <port> <url> <username> <password>\n",
+    if (argc != 7) {
+        fprintf(stderr, "Usage: %s <address> <port> <url> <username> <password> <request>\n",
                 argv[0]);
         exit(1);
     }
@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
     password=argv[5];
 
     signal(SIGINT, close_program);
-    serverSocket = connect_to_server(argv[1], argv[2], argv[3]);
+    serverSocket = connect_to_server(argv[1], argv[2], argv[3],argv[6]);
 
     return 0;
 }
