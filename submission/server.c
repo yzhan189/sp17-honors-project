@@ -42,16 +42,16 @@ int main(int argc, char **argv)
     printf("Listening on file descriptor %d, port %d\n", sock_fd, ntohs(result_addr->sin_port));
 
     while(1){
-		printf("Waiting for connection...\n");
-		int client_fd = accept(sock_fd, NULL, NULL);
-		printf("Connection made: client_fd=%d\n", client_fd);
+	printf("Waiting for connection...\n");
+	int client_fd = accept(sock_fd, NULL, NULL);
+	printf("Connection made: client_fd=%d\n", client_fd);
 
-		char buffer[1024];
-		int len = read(client_fd, buffer, 1024);
-		if(len > 0){
-		    buffer[len] = '\0';
-			printf("%s\n", buffer);
-		}
+	char buffer[1024];
+	int len = read(client_fd, buffer, 1024);
+	if(len > 0){
+	    buffer[len] = '\0';
+		printf("%s\n", buffer);
+	}
 
         FILE* file = fopen("dog.jpg","r");
         if(file) {
@@ -62,12 +62,6 @@ int main(int argc, char **argv)
 
           char*buf = malloc(size);
           fread(buf,1,size,file);
-
-          char response[2048];
-          
-          sprintf(response, "OK\n");
-
-          write(client_fd, response, strlen(response));
           
 		  size_t sent_bytes = 0;
 		  while(1){
