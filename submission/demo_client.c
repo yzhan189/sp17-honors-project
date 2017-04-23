@@ -157,7 +157,7 @@ int connect_to_server(const char *host, const char *port, const char *url,const 
 
 
 
-    int output_file = open("out2.png",O_CREAT|O_TRUNC|O_WRONLY,S_IRWXU);
+    int output_file = open("out3.png",O_CREAT|O_TRUNC|O_WRONLY,S_IRWXU);
     int len = 0;
     int total = 0;
     do{
@@ -165,8 +165,8 @@ int connect_to_server(const char *host, const char *port, const char *url,const 
         len = read(serverSocket, resp, 999);
         fprintf(stderr, "Read %d from proxy server\n", len);
         resp[len] = '\0';
-        //encrypt_(resp,strlen(resp),secret,8);
-        resp[strlen(resp)] = '\0';
+        encrypt_(resp,len,secret,8);
+        resp[len] = '\0';
         fprintf(stderr, "## DECRPYTION SERVER RESPONSE:[%s](lem: %lu)\n",resp,strlen(resp));
         //printf("%s\n", resp);
         int ret = write(output_file, resp, len);
