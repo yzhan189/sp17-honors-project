@@ -13,7 +13,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
+//#include <unistd.h>
 int secret[8] = { 125,126,173,225,233,241,296,374 };
 char* username;
 char* password;
@@ -77,12 +77,17 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     }
 
     int ret = connect(serverSocket, result->ai_addr, result->ai_addrlen);
-    char auth[17];
+    char login_info[128];
+    memset(login_info,0,128);
+    read(serverSocket,login_info,10);
+    printf("%s\n",login_info);
+    char* auth=calloc(1,17);
     memset(auth,0,17);
     strcat(auth,username);
     strcat(auth," ");
     strcat(auth,password);
     write(serverSocket,auth,17);
+    printf("Write auth info to server!\n");
     if(ret == -1){
       perror("connect");
       exit(1);
@@ -92,14 +97,14 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     msg[strlen(url)] = '\0';
 
     fprintf(stderr, "BEFORE ENCRPTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
-    encrypt(msg,strlen(msg),secret,8);
+    encrypt_(msg,strlen(msg),secret,8);
     msg[strlen(url)] = '\0';
     fprintf(stderr, "AFTER ENCRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
-    // encrypt(msg,strlen(msg),secret,8);
+    // encrypt_(msg,strlen(msg),secret,8);
     // msg[strlen(url)] = '\0';
     // fprintf(stderr, "DECRPYTION:[%s]\n> strlen(url): [%lu]\n> strlen(msg): [%lu]\n",msg,strlen(url),strlen(msg));
     // if(strcmp(msg, url)) {
-    //   perror("encrypt\n");
+    //   perror("encrypt_\n");
     // };
 
 
@@ -125,7 +130,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     char resp[1000];
     int len = read(serverSocket , resp, 999);
     resp[len] = '\0';
-    encrypt(resp,strlen(resp),secret,8);
+    encrypt_(resp,strlen(resp),secret,8);
     resp[strlen(resp)] = '\0';
     fprintf(stderr, "## DECRPYTION SERVER RESPONSE:[%s](lem: %lu)\n",resp,strlen(resp));
     // if(strcmp(resp, url)) {

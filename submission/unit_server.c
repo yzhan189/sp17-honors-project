@@ -187,8 +187,10 @@ void run_server(char *port) {
       int auth=authentication(buffer);
       if(auth==1){
           printf("Success!\n" );
+          write(client_fd,"Success!",8);
       }
       else{
+          write(client_fd,"Fail!!!!",8);
           printf("Fail! closing this connection\n" );
           close(client_fd);
       }
