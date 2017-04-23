@@ -13,3 +13,7 @@ XOR encryption function
 ## 4/10/2017
 To do: 1. implement write and read between server and client
        2. implement clean up(SUPER ANNOYING)
+## 4/23/2017
+To do: 1. Demo video  
+sock5 auth:
+curl -socks5 localhost:8080 --proxy-user test:test http://www.cnn.com
