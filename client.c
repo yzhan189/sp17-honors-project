@@ -16,16 +16,17 @@ int main(int argc, char **argv)
 	hints.ai_family = AF_INET; /* IPv4 only */
 	hints.ai_socktype = SOCK_STREAM; /* TCP */
 
-	s = getaddrinfo("www.google.edu", "1234", &hints, &result);
+	s = getaddrinfo("www.google.com", "http", &hints, &result);
+
 	if (s != 0) {
 	        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         	exit(1);
 	}
-
+	fprintf(stderr,"line25!\n");
 	if(connect(sock_fd, result->ai_addr, result->ai_addrlen) == -1){
                 perror("connect");
                 exit(2);
-        }
+    }
 
 	char *buffer = "GET / HTTP/1.0\r\n\r\n";
 	printf("SENDING: %s", buffer);

@@ -15,7 +15,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 int secret[8] = { 125,126,173,225,233,241,296,374 };
-
+char* username;
+char* password;
 static volatile int serverSocket;
 void close_program(int signal);
 ssize_t write_to_server(int socket, const char* url, size_t count){
@@ -76,6 +77,12 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     }
 
     int ret = connect(serverSocket, result->ai_addr, result->ai_addrlen);
+    char auth[17];
+    memset(auth,0,17);
+    strcat(auth,username);
+    strcat(auth," ");
+    strcat(auth,password);
+    write(serverSocket,auth,17);
     if(ret == -1){
       perror("connect");
       exit(1);
@@ -148,12 +155,13 @@ void close_program(int signal) {
 
 int main(int argc, char **argv) {
 
-    if (argc != 4) {
-        fprintf(stderr, "Usage: %s <address> <port> <url>\n",
+    if (argc != 6) {
+        fprintf(stderr, "Usage: %s <address> <port> <url> <username> <password>\n",
                 argv[0]);
         exit(1);
     }
-
+    username=argv[4];
+    password=argv[5];
 
     signal(SIGINT, close_program);
     serverSocket = connect_to_server(argv[1], argv[2], argv[3]);

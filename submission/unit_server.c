@@ -26,6 +26,8 @@ int secret2[8] = { 125,126,173,225,233,241,296,374 };
 //     }
 // }
 char *url = "www.google.com";
+char *username;
+char *password;
 #define MAX_CLIENTS 8
 void* connect_to_remote(void *p) ;
 
@@ -71,6 +73,8 @@ void cleanup() {
         close(clients[i]);
       }
     }
+    free(username);
+    free(password);
     shutdown(serverSocket , SHUT_RDWR);
     close(serverSocket);
 }
@@ -85,8 +89,37 @@ void close_server() {
     freeaddrinfo(result);
     pthread_exit(NULL);
 }
+/**
+  *the username and the password must be both 8 bytes and seperated by a space
+  *since the server will only read 17 bytes for authentication
+  */
 
+void read_user_password(char* filename){
+	FILE* f=fopen(filename,"r");
+	char* line;
+	size_t len;
+	getline(&line, &len,f);
+    char* origin=line;
+	char* user=strsep(&line," ");
+	printf("user:%s password:%s",user,line);
+    username=strndup(user,8);
+    password=strndup(line,8);
+    fprintf(stderr, "line 106\n" );
+    free(origin);
+    fprintf(stderr, "leaving read_user_password\n" );
+}
 
+int authentication(char* buffer){
+    char* user=strsep(&buffer," ");
+    printf("the username sent from clinet is %s and the password is %s\n",username,password );
+    if(strncmp(username,user,8)==0&&strncmp(password,buffer,8)==0){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+
+}
 
 /**
  * Sets up a server connection.
@@ -99,7 +132,7 @@ void close_server() {
  *
  * port - port server will run on.
  *
- */
+  */
 void run_server(char *port) {
 
     int s;
@@ -150,6 +183,17 @@ void run_server(char *port) {
       socklen_t socklen = (socklen_t)sizeof(struct sockaddr);
       int client_fd = accept(serverSocket, &client_addr, &socklen);
       printf("Connection made: client_fd=%d\n", client_fd);
+      printf("Now start to authenticate!\n");
+      char buffer[1024];
+      read(client_fd,buffer,17);
+      int auth=authentication(buffer);
+      if(auth==1){
+          printf("Success!\n" );
+      }
+      else{
+          printf("Fail! Exiting server\n" );
+          close_server();
+      }
       pthread_mutex_lock(&mutex);
       clients[curr_client] = client_fd;
       // hand off to function
@@ -261,10 +305,11 @@ void* connect_to_remote(void *p) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "./server <port>\n");
+    if (argc != 3) {
+        fprintf(stderr, "./server <port> <file>\n");
         return -1;
     }
+	read_user_password(argv[2]);
     printmyip(AF_INET);
     struct sigaction act;
     memset(&act, '\0', sizeof(act));
