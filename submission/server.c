@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 		int client_fd = accept(sock_fd, NULL, NULL);
 		printf("Connection made: client_fd=%d\n", client_fd);
 
-		char buffer[1000];
+		char buffer[1024];
 		int len = read(client_fd, buffer, 1024);
 		if(len > 0){
 		    buffer[len] = '\0';
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 		  while(1){
 			if(sent_bytes >= size)
 				break;
-          	size_t write_size = write(client_fd, buf, size);
+          		size_t write_size = write(client_fd, buf, size);
 			sent_bytes += write_size;
 		  }
 
