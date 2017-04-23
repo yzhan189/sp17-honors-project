@@ -79,8 +79,7 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     int ret = connect(serverSocket, result->ai_addr, result->ai_addrlen);
     char login_info[128];
     memset(login_info,0,128);
-    read(serverSocket,login_info,10);
-    printf("%s\n",login_info);
+   
     char* auth=calloc(1,17);
     memset(auth,0,17);
     strcat(auth,username);
@@ -91,6 +90,11 @@ int connect_to_server(const char *host, const char *port, const char *url) {
     if(ret == -1){
       perror("connect");
       exit(1);
+    }
+    read(serverSocket,login_info,10);
+    printf("%s\n",login_info);
+    if(strncmp(login_info,"Fail!!!!",8)==0){
+        exit(1);
     }
     char *msg = calloc(1, strlen(url) + 1);
     strcpy(msg, url);
