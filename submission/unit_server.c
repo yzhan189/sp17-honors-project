@@ -104,14 +104,12 @@ void read_user_password(char* filename){
 	printf("user:%s password:%s",user,line);
     username=strndup(user,8);
     password=strndup(line,8);
-    fprintf(stderr, "line 106\n" );
     free(origin);
-    fprintf(stderr, "leaving read_user_password\n" );
 }
 
 int authentication(char* buffer){
     char* user=strsep(&buffer," ");
-    printf("the username sent from clinet is %s and the password is %s\n",username,password );
+    printf("the username sent from clinet is %s and the password is %s\n",user,buffer);
     if(strncmp(username,user,8)==0&&strncmp(password,buffer,8)==0){
         return 1;
     }
@@ -192,7 +190,7 @@ void run_server(char *port) {
       }
       else{
           printf("Fail! Exiting server\n" );
-          close_server();
+          exit(1);
       }
       pthread_mutex_lock(&mutex);
       clients[curr_client] = client_fd;
