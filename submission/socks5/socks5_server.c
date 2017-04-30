@@ -402,7 +402,7 @@ int transfer_data(int client_sock, int target_server_sock) {
 					}
 					else {
 						perror("recv from client error");
-						break;
+						return SOCKS5_ERROR_RECV_CLIENT;
 					}
 				}
 				else if (FD_ISSET(my_read_fds[i], &readfds) && my_read_fds[i] == target_server_sock) {
@@ -424,7 +424,7 @@ int transfer_data(int client_sock, int target_server_sock) {
 					}
 					else {
 						perror("recv from real server error");
-						break;
+						return SOCKS5_ERROR_RECV_SERVER;
 					}
 				}
 
