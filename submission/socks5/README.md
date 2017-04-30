@@ -24,7 +24,12 @@ Alter:
 2. Use it again with wrong password, and prove it doesn't work
 ### 4. Block website
 Prereq: VM
-sudo 
+#### 1. Block website
+sudo /etc/hosts 
+add two lines:
+127.0.0.1 illinois.edu
+127.0.0.1 www.illinois.edu
+#### 2
 
 ## useful termianl cmd
 1. curl --proxy socks5://admin:12345@localhost:1997 www.google.com --> fail authentication
