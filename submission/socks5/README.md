@@ -5,6 +5,9 @@
 4. Code clean up
 
 ## Demo idea
+### Basic connection status
+use netstat -tlnp before and after running the server and prove there is a new tunnel establied by the proxy
+
 ### Hide ip address
 Use "checkmyip before and after connecting to the proxy, proving that ip is changed.
 Prereq: Need to running proxy on VM, otherwise the ip addr is not affected.
