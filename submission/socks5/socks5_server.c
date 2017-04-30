@@ -48,11 +48,12 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Usage: %s <proxy_port>\n", argv[0]);
 		return SOCKS5_ERROR_USAGE;
 	}
-	fprintf(stderr, "==============================\n\n\n");
+	fprintf(stderr, "==================================\n");
+	fprintf(stderr, "|                                |\n");
+	fprintf(stderr, "| Welcome to socks5 proxy server |\n");
+	fprintf(stderr, "|                                |\n");
+	fprintf(stderr, "==================================\n");
 
-	fprintf(stderr, "Welcome to socks5 proxy server\n\n\n");
-
-	fprintf(stderr, "==============================\n");
 	int s, proxy_sock;
 
 
@@ -64,7 +65,7 @@ int main(int argc, char *argv[]) {
 	s = getaddrinfo(NULL, argv[1], &hints, &result);
 	if (s != 0) {
 	   fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-	   exit(1);
+	   return SOCKS5_ERROR_GETADDRINFO;
 	}
 
 
