@@ -28,12 +28,6 @@ int connect_to_server(const char* host, const char* port, const char *username,
 	const char *password, const char *target_domain, const char* target_port);
 
 
-
-
-
-
-
-
 int main(int argc, char **argv) {
 
     if (argc != 7) {
@@ -136,9 +130,9 @@ int connect_to_server(const char* host, const char* port, const char *username,
 	*/
 	char buffer[BUFF_SIZE] = {0};
 	char *pen = buffer;
-	*pen ++ = 0x05;// version
+	*pen ++ = SOCKS5_VERSION;// version
 	*pen ++ = 2;// support method count
-	*pen ++ = 0x02;// auth mode
+	*pen ++ = AUTH_MODE;// auth mode
 	*pen ++ = 0x00;//
 
 	fprintf(stderr, "%u\n", (unsigned)buffer[0]);
@@ -179,7 +173,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 
 		// send usrname
 		pen = buffer;
-		*pen ++ = 0x01;// version
+		*pen ++ = 0x01;
 		// pen ++;
 		size_t username_len = strlen(username);
 		*pen ++ = username_len;
@@ -210,13 +204,13 @@ int connect_to_server(const char* host, const char* port, const char *username,
 		// Authentication pass
 		// send connect cmd
 		pen = buffer;
-		*pen ++ = 5;
+		*pen ++ = SOCKS5_VERSION;
 
 		*pen ++ = 1;
 
 		*pen ++ = 0;
 
-		*pen ++ = 3; //DOMAIN
+		*pen ++ = SOCKS5_DOMAIN; //DOMAIN
 
 		/**
 		* get the address of target destination
