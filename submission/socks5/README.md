@@ -5,7 +5,7 @@
 4. Code clean up
 
 ## Demo idea
-### hide ip address
+### Hide ip address
 Use "checkmyip before and after connecting to the proxy, proving that ip is changed.
 Prereq: Need to running proxy on VM, otherwise the ip addr is not affected.
 
