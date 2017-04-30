@@ -1,4 +1,3 @@
-// clang -lpthread -o SOCK_server -O2 SOCK_server.c
 //curl --socks5 localhost:1080 -u admin www.google.com
 //netstat -tlnp
 #include <stdio.h>
@@ -40,11 +39,10 @@ int select_method(int client_sock) {
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 	char recv_buffer[BUFF_SIZE] = {0};
 	char resp_buffer[2] = {0};
+	char *recv_ptr = recv_buffer;
+	char *resp_ptr = resp_buffer;
 
-	METHOD_SELECT_REQUEST *method_request;
-	METHOD_SELECT_RESPONSE *method_response;
 
-	// recv METHOD_SELECT_REQUEST
 	int ret = recv(client_sock, recv_buffer, BUFF_SIZE, 0);
 	if(ret <= 0) {
 		perror("recv error");
@@ -54,24 +52,19 @@ int select_method(int client_sock) {
 	}
 	fprintf(stderr,"select_method: recv %d bytes\n", ret);
 
- // if client request a wrong version or a wrong number_method
-	method_request = (METHOD_SELECT_REQUEST *)recv_buffer;
-	method_response = (METHOD_SELECT_RESPONSE *)resp_buffer;
+	*resp_ptr ++ = SOCKS5_VERSION;
+	// resp_ptr ++;
 
-	method_response -> version = SOCKS5_VERSION;
-	fprintf(stderr, "version: %u\n", (unsigned)method_response -> version);
- // if not socks5
-	if((int)method_request -> version != SOCKS5_VERSION) {
-		method_response -> select_method = 0xff;
-
-		send(client_sock, method_response, sizeof(METHOD_SELECT_RESPONSE), 0);
+ 	// if not socks5
+	if((unsigned)recv_buffer[0] != SOCKS5_VERSION) {
+		*resp_ptr ++ = 0xff;
+		send(client_sock, resp_buffer, 2, 0);
 		close(client_sock);
 
 		return SOCKS5_ERROR_METHOD;
 	}
-
-	method_response -> select_method = AUTH_CODE;
-	if(send(client_sock, method_response, sizeof(METHOD_SELECT_RESPONSE), 0) == -1) {
+	*resp_ptr ++ = AUTH_CODE;
+	if(send(client_sock, resp_buffer, 2, 0) == -1) {
 		close(client_sock);
 		return SOCKS5_ERROR_SEND;
 	}
@@ -85,9 +78,8 @@ int select_method(int client_sock) {
 int auth_client(int client_sock) {
 	char recv_buffer[BUFF_SIZE] = {0};
 	char resp_buffer[BUFF_SIZE] = {0};
-
-	AUTH_REQUEST *auth_request;
-	AUTH_RESPONSE *auth_response;
+	char *recv_ptr = recv_buffer;
+	char *resp_ptr = resp_buffer;
 
 	// /*
 	//  *  authentication response
@@ -101,30 +93,28 @@ int auth_client(int client_sock) {
 	}
 	fprintf(stderr, "AuthPass: recv %d bytes\n", ret);
 
-	auth_request = (AUTH_REQUEST *)recv_buffer;
 
+	*resp_ptr ++ = 0x01;
 
-	auth_response = (AUTH_RESPONSE *)resp_buffer;
-	auth_response -> version = 0x01;
+	char input_username[256] = {0};
+	char input_password[256] = {0};
 
-	char recv_name[256] = {0};
-	char recv_pass[256] = {0};
+	char username_len[2] = {0};
+	strncpy(username_len, recv_ptr + 1, 1);
 
-
-	char password_str[2] = {0};
-	strncpy(password_str, auth_request->username + auth_request -> username_len, 1);
-	int password_len = (int)password_str[0];
+	char password_len[2] = {0};
+	strncpy(password_len, recv_ptr + 1 + 1 + (unsigned)username_len[0], 1);
 
 	fprintf(stderr, "recv %zu byte from client = [%s]\n", strlen(resp_buffer), resp_buffer);
 
-	strncpy(recv_name, auth_request -> username, auth_request -> username_len );
-	strncpy(recv_pass, auth_request -> username + auth_request -> username_len + sizeof(auth_request -> password_len), password_len );
-	fprintf(stderr, "parse username: %s\npassword: %s\n", recv_name, recv_pass);
+	strncpy(input_username, recv_ptr + 2, (unsigned int)(username_len[0]));
+	strncpy(input_password, recv_ptr + 2 + (unsigned int)(username_len[0]) + 1, (unsigned int)(password_len[0]));
+	fprintf(stderr, "parse username: %s\npassword: %s\n", input_username, input_password);
 	// check username and password
-	if((strncmp(recv_name, USERNAME, strlen(USERNAME)) == 0) &&
-				(strncmp(recv_pass, PASSWORD, strlen(PASSWORD)) == 0)){
-		auth_response -> result = 0x00;
-		if(send(client_sock, auth_response, sizeof(AUTH_RESPONSE), 0) == -1) {
+	if((strncmp(input_username, USERNAME, strlen(USERNAME)) == 0) &&
+				(strncmp(input_password, PASSWORD, strlen(PASSWORD)) == 0)){
+		*resp_ptr ++ = 0x00;
+		if(send(client_sock, resp_buffer, 2, 0) == -1) {
 			close(client_sock);
 			return SOCKS5_ERROR_SEND;
 		}
@@ -135,13 +125,14 @@ int auth_client(int client_sock) {
 		}
 	}
 	else {
-		auth_response -> result = 0x01;
-		send(client_sock, auth_response, sizeof(AUTH_RESPONSE), 0);
+		*resp_ptr ++ = 0x01;
+		send(client_sock, resp_buffer, 2, 0);
 
 		close(client_sock);
 		return SOCKS5_ERROR_AUTH;
 	}
 }
+
 
 
 
@@ -152,10 +143,11 @@ int ack_request(int client_sock) {
 
 	char recv_buffer[BUFF_SIZE] = {0};
 	char resp_buffer[BUFF_SIZE] = {0};
+	char *recv_ptr = recv_buffer;
+	char *resp_ptr = resp_buffer;
 
-	CONN_REQUEST *conn_request;
-	CONN_RESPONSE *conn_response;
-
+	char input_password[256] = {0};
+	//
 	// recv command
 	int ret = recv(client_sock, recv_buffer, BUFF_SIZE, 0);
 	if(ret <= 0) {
@@ -164,10 +156,10 @@ int ack_request(int client_sock) {
 		return SOCKS5_ERROR_RECV;
 	}
 
-	conn_request = (CONN_REQUEST *)recv_buffer;
-	if((conn_request -> version != SOCKS5_VERSION)
-	|| (conn_request -> cmd != SOCKS5_CONNECT)
-	|| (conn_request -> address_type == SOCKS5_IPV6)) {
+
+	if(((unsigned)recv_buffer[0] != SOCKS5_VERSION)
+	|| ((unsigned)recv_buffer[1] != SOCKS5_CONNECT)
+	|| ((unsigned)recv_buffer[3] == SOCKS5_IPV6)) {
 	//fprintf(stderr, "connect command error.\n");
 		close(client_sock);
 		return SOCKS5_ERROR_ACKCMD;
@@ -180,18 +172,21 @@ int ack_request(int client_sock) {
 	target_server_addr.sin_family = AF_INET;
 
 	// get real server ip address
-	if(conn_request -> address_type == SOCKS5_IPV4) {
-	 memcpy(&target_server_addr.sin_addr.s_addr, &conn_request -> address_type + sizeof(conn_request -> address_type) , 4);
-	 memcpy(&target_server_addr.sin_port, &conn_request -> address_type + sizeof(conn_request -> address_type) + 4, 2);
+	if((unsigned)recv_buffer[3] == SOCKS5_IPV4) {
 
-	fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
+		memcpy(&target_server_addr.sin_addr.s_addr, recv_ptr + 4, 4);
+		memcpy(&target_server_addr.sin_port, recv_ptr + 4 + 4, 2);
+
+		fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
 	}
-	else if(conn_request -> address_type == SOCKS5_DOMAIN) {
-		char domain_length = *(&conn_request -> address_type
-			           + sizeof(conn_request -> address_type));
+	else if((unsigned)recv_buffer[3] == SOCKS5_DOMAIN) {
+		char domain_length[2] = {0};
+		memcpy(domain_length, recv_ptr + 4, 1);
+		//  = *(&conn_request -> address_type
+		// 	           + sizeof(conn_request -> address_type));
 		char target_domain[256] = {0};
 
- 		strncpy(target_domain, &conn_request -> address_type + 2, (unsigned int)domain_length);
+ 		strncpy(target_domain, recv_ptr + 5, (unsigned int)(domain_length[0]));
 
 		fprintf(stderr, "target: %s\n", target_domain);
 
@@ -203,9 +198,9 @@ int ack_request(int client_sock) {
 		 }
 		 memcpy(&target_server_addr.sin_addr , phost -> h_addr_list[0] , phost -> h_length);
 
-		 memcpy(&target_server_addr.sin_port, &conn_request -> address_type
-			 			+ sizeof(conn_request -> address_type)
-			 			+ sizeof(domain_length) + domain_length, 2);
+		 memcpy(&target_server_addr.sin_port, recv_ptr + 5 + (unsigned int)(domain_length[0]), 2);
+		 fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
+
 	}
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 
@@ -219,11 +214,9 @@ int ack_request(int client_sock) {
 	}
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 
-	conn_response = (CONN_RESPONSE *)resp_buffer;
 
-	conn_response -> version = SOCKS5_VERSION;
-	conn_response -> reserved = 0x00;
-	conn_response -> address_type = 0x01;
+
+
 	// fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 
 	ret = connect(target_server_sock, (struct sockaddr *)&target_server_addr, sizeof(struct sockaddr_in));
@@ -231,17 +224,22 @@ int ack_request(int client_sock) {
 
 	if(ret == 0) {
 		// fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
-
-		conn_response -> resp = 0x00;
-		if(send(client_sock, conn_response, 10, 0) == -1) {
+		*resp_ptr ++ = SOCKS5_VERSION;
+		*resp_ptr ++ = 0x00;// success
+		*resp_ptr ++ = 0x00;// reserve
+		*resp_ptr ++ = 0x01;//addr type
+		if(send(client_sock, resp_buffer, 10, 0) == -1) {
 			close(client_sock);
 			return SOCKS5_ERROR_SEND;
 		}
 	}
 	else {
 		perror("Connect to real server error");
-		conn_response -> resp = 0x01;
-		send(client_sock, conn_response, 10, 0);
+		*resp_ptr ++ = SOCKS5_VERSION;
+		*resp_ptr ++ = 0x01;// fail
+		*resp_ptr ++ = 0x00;// reserve
+		*resp_ptr ++ = 0x01;//addr type
+		send(client_sock, resp_buffer, 10, 0);
 		close(client_sock);
 		return SOCKS5_ERROR_CONNECT;
 	}
@@ -256,21 +254,22 @@ int ack_request(int client_sock) {
 int transfer_data(int client_sock, int target_server_sock) {
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 
-	char recv_buffer[BUFF_SIZE] = {0};
+	char buffer[BUFF_SIZE] = {0};
 
-	fd_set fd_read;
+	int ret = 0;
+
 	struct timeval time_out;
-
 	time_out.tv_sec = 0;
 	time_out.tv_usec = TIME_OUT;
 
-	int ret = 0;
+	fd_set fd_read;
 
 	while(1)  {
 		FD_ZERO(&fd_read);
 		FD_SET(client_sock, &fd_read);
 		FD_SET(target_server_sock, &fd_read);
 		int chosen = 0;
+
 		if(client_sock > target_server_sock) {
 			chosen = client_sock;
 		}
@@ -278,8 +277,9 @@ int transfer_data(int client_sock, int target_server_sock) {
 			chosen = target_server_sock;
 		}
 		ret = select(chosen + 1, &fd_read, NULL, NULL, &time_out);
+
 		if(ret == -1) {
-			perror("select socket error");
+			perror("select fail");
 			break;
 		}
 		else if(ret == 0){
@@ -289,12 +289,12 @@ int transfer_data(int client_sock, int target_server_sock) {
 
 		if(FD_ISSET(client_sock, &fd_read)){
 			fprintf(stderr, "client can read!\n");
-			bzero(recv_buffer, BUFF_SIZE);
-			ret = recv(client_sock, recv_buffer, BUFF_SIZE, 0);
+			bzero(buffer, BUFF_SIZE);
+			ret = recv(client_sock, buffer, BUFF_SIZE, 0);
 			if(ret > 0) {
-		 		fprintf(stderr, "%s", recv_buffer);
+		 		fprintf(stderr, "%s", buffer);
 		 		fprintf(stderr, "recv %d bytes from client.\n", ret);
-				ret = send(target_server_sock, recv_buffer, ret, 0);
+				ret = send(target_server_sock, buffer, ret, 0);
 				if(ret == -1) {
 					perror("send data to real server error");
 					break;
@@ -312,12 +312,12 @@ int transfer_data(int client_sock, int target_server_sock) {
 		}
 		else if(FD_ISSET(target_server_sock, &fd_read)) {
 			fprintf(stderr, "real server can read!\n");
-			bzero(recv_buffer, BUFF_SIZE);
-			ret = recv(target_server_sock, recv_buffer, BUFF_SIZE, 0);
+			bzero(buffer, BUFF_SIZE);
+			ret = recv(target_server_sock, buffer, BUFF_SIZE, 0);
 			if(ret > 0) {
-				fprintf(stderr, "%s", recv_buffer);
+				fprintf(stderr, "%s", buffer);
 				fprintf(stderr, "recv %d bytes from real server.\n", ret);
-				ret = send(client_sock, recv_buffer, ret, 0);
+				ret = send(client_sock, buffer, ret, 0);
 				if(ret == -1){
 					perror("send data to client error");
 					break;
@@ -344,18 +344,19 @@ int connect_to_remote(void *client_fd) {
 	int client_sock = *(int *)client_fd;
 
 	if(select_method(client_sock) == -1) {
-	//fprintf(stderr, "socks version error\n");
+		perror("method");
 		return SOCKS5_ERROR_METHOD;
 	}
 
 	if(auth_client(client_sock) == -1) {
-	//fprintf(stderr, "auth password error\n");
+		perror("authentication");
+
 		return SOCKS5_ERROR_AUTH;
 	}
 
 	int target_server_sock = ack_request(client_sock);
 	if(target_server_sock == -1) {
-	//fprintf(stderr, "parse command error.\n");
+		perror("ack_request");
 		return SOCKS5_ERROR_ACKCMD;
 	}
 
@@ -379,12 +380,7 @@ int main(int argc, char *argv[]) {
 
 	fprintf(stderr, "==============================\n");
 	int s, proxy_sock;
-	// int proxy_sock;
-	// int proxy_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if(proxy_sock < 0) {
-		perror("Socket error\n");
-		return SOCKS5_ERROR_SOCKET;
-	}
+
 
 	struct addrinfo hints, *result, *rp;
 	bzero(&hints, sizeof(struct addrinfo));
@@ -397,10 +393,32 @@ int main(int argc, char *argv[]) {
 	   exit(1);
 	}
 
+
+
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		proxy_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (proxy_sock == -1){
+			continue;
+		}
+		if (bind(proxy_sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+			break;                  /* Success */
+		}
+		else {
+			perror("bind error");
+			return SOCKS5_ERROR_BIND;
+		}
+		close(proxy_sock);
+	}
+	freeaddrinfo(result);
+
+	if(proxy_sock < 0){
+		perror("socket error");
+		return SOCKS5_ERROR_SOCKET;
+	}
 	// setsockopt
 	int optval = 1;
-	setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-	setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+	setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &optval, sizeof(optval));
+	// setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 
 	#ifdef SO_NOSIGPIPE
 	    if (-1 == setsockopt(proxy_sock, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval))) {
@@ -408,21 +426,6 @@ int main(int argc, char *argv[]) {
 	        return -1;
 	    }
 	#endif
-	// if(bind(proxy_sock, result->ai_addr, result->ai_addrlen) < 0){
-	// 	perror("Bind error");
-	// 	return SOCKS5_ERROR_BIND;
-	// }
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		proxy_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-			if (proxy_sock == -1)
-			continue;
-		if (bind(proxy_sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-			break;                  /* Success */
-		}
-		close(proxy_sock);
-	}
-	freeaddrinfo(result);
-
 	if(listen(proxy_sock, MAX_USER) < 0) {
 		perror("Listen error");
 		return SOCKS5_ERROR_LISTEN;
