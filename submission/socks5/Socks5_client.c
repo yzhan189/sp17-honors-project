@@ -3,6 +3,8 @@
  */
 // #include "utils.h"
 // #include "encrypt.h"
+
+
 #include "Socks5.h"
 #include <errno.h>
 #include <netdb.h>
@@ -20,23 +22,6 @@
 
 static volatile int serverSocket;
 void close_program(int signal);
-ssize_t write_to_server(int socket, const char* target_domain, size_t count){
-  printf("SENDING: %s\n", target_domain);
-  printf("===\n");
-  ssize_t bytewrite = 0;
-  ssize_t totalwrite = 0;
-  while(count > 0) {
-    bytewrite = write(serverSocket , target_domain, strlen(target_domain));
-    if(bytewrite == -1) {
-      return -1;
-    }
-    count -= bytewrite;
-    totalwrite += bytewrite;
-
-  }
-  return bytewrite;
-}
-void read_from_client(int socket);
 
 /**
  * Shuts down connection with 'serverSocket'.
@@ -55,7 +40,7 @@ void close_server_connection() {
  * host - Server to connect to.
  * port - Port to connect to server on.
  *
- * Returns integer of valid file descriptor, or exit(1) on failure.
+ * Returns integer of valid file descriptor, or error status on failure.
  */
 int connect_to_server(const char* host, const char* port, const char *username,
                       const char *password, const char *target_domain, const char* target_port) {
@@ -64,10 +49,6 @@ int connect_to_server(const char* host, const char* port, const char *username,
 	 *	create socket
 	 */
 	int s;
-
-	/**
-	 *	connect to server
-	 */
 	struct addrinfo server_addr, *result;
 	bzero(&server_addr, sizeof(struct addrinfo));
 
@@ -75,6 +56,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 	server_addr.ai_socktype = SOCK_STREAM; /* TCP */
 
 	s = getaddrinfo(host, port, &server_addr, &result);
+
 	if (s != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
 		return SOCKS5_ERROR_GETADDRINFO;
@@ -125,6 +107,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 	// fprintf(stderr, "%zu: %s\n", (size_t)(pen - buffer), buffer);
 
 	send(serverSocket, buffer, pen - buffer, 0);
+
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 	fprintf(stderr, "METHOD: recv %zu byte from server\n", strlen(buffer));
 
@@ -157,7 +140,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 		pen += password_len;
 
 
-		fprintf(stderr, "AUTH: send %u byte from server = [%s]\n", (unsigned)(pen - buffer), buffer);
+		fprintf(stderr, "AUTH: send %u byte from server = [%s]\n", (unsigned int)(pen - buffer), buffer);
 
 		send(serverSocket, buffer, pen - buffer, 0);
 		fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
@@ -166,7 +149,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 
 		if((unsigned int)*(buffer + 1) != 0) {
 			perror("Authentication");
-			exit(SOCKS5_ERROR_AUTH);
+			return SOCKS5_ERROR_AUTH;
 		}
 		fprintf(stderr, "CLIENT AUTH PASS!\n");
 		// Authentication pass
@@ -193,7 +176,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 
 		fprintf(stderr, "i want to go: %s[%s] %d\n", target_domain, inet_ntoa(*(struct in_addr*)&target_domain), port);
 
-		fprintf(stderr, "send %u byte to server\n", (unsigned)(pen - buffer));
+		fprintf(stderr, "send %u byte to server\n", (unsigned int)(pen - buffer));
 		send(serverSocket, buffer, pen - buffer, 0);
 		recv(serverSocket, buffer, 4, 0);
 		fprintf(stderr, "recv %zu byte from server\n", strlen(buffer));
@@ -226,18 +209,33 @@ int main(int argc, char **argv) {
     if (argc != 7) {
         fprintf(stderr, "Usage: %s <host> <port> <username> <password> <target_domain> <target_port>\n",
                 argv[0]);
-        exit(1);
+        return SOCKS5_ERROR_USAGE;
     }
 
 
     signal(SIGINT, close_program);
     serverSocket = connect_to_server(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
 
-    char resp[1000];
-    int len = 0;
-    while ((len = read (serverSocket, resp, 999)) > 0) {
-	    resp[len] = '\0';
-	    printf("%s\n", resp);
-    }
-    return 0;
+	if(serverSocket == SOCKS5_ERROR_AUTH) {
+		fprintf(stderr, "UNAUTHORIZED USER!\n");
+		return serverSocket;
+	}
+
+	char *buffer = "GET / HTTP/1.0\r\n\r\n";
+	printf("SENDING: %s", buffer);
+	printf("===\n");
+	write(serverSocket, buffer, strlen(buffer));
+
+
+	char resp[1000];
+	int len = read(serverSocket, resp, 999);
+	resp[len] = '\0';
+	printf("%s\n", resp);
+    // char resp[1000];
+    // int len = 0;
+    // while ((len = read (serverSocket, resp, 999)) > 0) {
+	//     resp[len] = '\0';
+	//     printf("%s\n", resp);
+    // }
+    return SOCKS5_SUCCESS;
 }
