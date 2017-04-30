@@ -1,3 +1,6 @@
+/* *
+ *  CS296 Honor Project
+ */
 //curl --socks5 localhost:1080 -u admin www.google.com
 //netstat -tlnp
 #include <stdio.h>
@@ -171,6 +174,8 @@ int ack_request(int client_sock) {
 
 	target_server_addr.sin_family = AF_INET;
 
+	// fd is my file descriptor
+
 	// get real server ip address
 	if((unsigned)recv_buffer[3] == SOCKS5_IPV4) {
 
@@ -254,84 +259,85 @@ int ack_request(int client_sock) {
 int transfer_data(int client_sock, int target_server_sock) {
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
 
+	fd_set readfds;
+
+	//register my fd
+	FD_SET(target_server_sock, &readfds);
 	char buffer[BUFF_SIZE] = {0};
+	struct timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = TIME_OUT;
 
-	int ret = 0;
-
-	struct timeval time_out;
-	time_out.tv_sec = 0;
-	time_out.tv_usec = TIME_OUT;
-
-	fd_set fd_read;
+	int num_ready, ret, i;
 
 	while(1)  {
-		FD_ZERO(&fd_read);
-		FD_SET(client_sock, &fd_read);
-		FD_SET(target_server_sock, &fd_read);
-		int chosen = 0;
-
-		if(client_sock > target_server_sock) {
-			chosen = client_sock;
+		FD_ZERO(&readfds);
+		int my_read_fds[2] = {client_sock, target_server_sock};
+		int read_fd_count = 2;
+		for (i = 0; i < read_fd_count; i++) {
+			FD_SET(my_read_fds[i], &readfds);
 		}
-		else {
-			chosen = target_server_sock;
-		}
-		ret = select(chosen + 1, &fd_read, NULL, NULL, &time_out);
+		num_ready = select(FD_SETSIZE, &readfds, NULL, NULL, &timeout);
 
-		if(ret == -1) {
-			perror("select fail");
+		if(num_ready == -1) {
+			perror("error in select()");
 			break;
 		}
-		else if(ret == 0){
+		else if(num_ready == 0){
 			perror("select time out");
 			continue;
 		}
+		else {
+			for (int i=0; i < read_fd_count; i++) {
+				if (FD_ISSET(my_read_fds[i], &readfds) && my_read_fds[i] == client_sock) {
+					fprintf(stderr, "client can read!\n");
+					bzero(buffer, BUFF_SIZE);
+					ret = recv(my_read_fds[i], buffer, BUFF_SIZE, 0);
+					if(ret > 0) {
+				 		fprintf(stderr, "%s", buffer);
+				 		fprintf(stderr, "recv %d bytes from client.\n", ret);
+						ret = send(target_server_sock, buffer, ret, 0);
+						if(ret == -1) {
+							perror("send data to real server error");
+							break;
+						}
+					 	fprintf(stderr, "send %d bytes to client!\n", ret);
+				 	}
+					else if(ret == 0){
+						fprintf(stderr, "client close socket.\n");
+						break;
+					}
+					else {
+						perror("recv from client error");
+						break;
+					}
+				}
+				else if (FD_ISSET(my_read_fds[i], &readfds) && my_read_fds[i] == target_server_sock) {
+					fprintf(stderr, "real server can read!\n");
+					bzero(buffer, BUFF_SIZE);
+					ret = recv(my_read_fds[i], buffer, BUFF_SIZE, 0);
+					if(ret > 0) {
+						fprintf(stderr, "%s", buffer);
+						fprintf(stderr, "recv %d bytes from real server.\n", ret);
+						ret = send(client_sock, buffer, ret, 0);
+						if(ret == -1){
+							perror("send data to client error");
+							break;
+						}
+					}
+					else if(ret == 0) {
+						fprintf(stderr, "real server close socket.\n");
+						break;
+					}
+					else {
+						perror("recv from real server error");
+						break;
+					}
+				}
 
-		if(FD_ISSET(client_sock, &fd_read)){
-			fprintf(stderr, "client can read!\n");
-			bzero(buffer, BUFF_SIZE);
-			ret = recv(client_sock, buffer, BUFF_SIZE, 0);
-			if(ret > 0) {
-		 		fprintf(stderr, "%s", buffer);
-		 		fprintf(stderr, "recv %d bytes from client.\n", ret);
-				ret = send(target_server_sock, buffer, ret, 0);
-				if(ret == -1) {
-					perror("send data to real server error");
-					break;
-				}
-			 	fprintf(stderr, "send %d bytes to client!\n", ret);
-		 	}
-			else if(ret == 0){
-				fprintf(stderr, "client close socket.\n");
-				break;
-			}
-			else {
-				perror("recv from client error");
-				break;
 			}
 		}
-		else if(FD_ISSET(target_server_sock, &fd_read)) {
-			fprintf(stderr, "real server can read!\n");
-			bzero(buffer, BUFF_SIZE);
-			ret = recv(target_server_sock, buffer, BUFF_SIZE, 0);
-			if(ret > 0) {
-				fprintf(stderr, "%s", buffer);
-				fprintf(stderr, "recv %d bytes from real server.\n", ret);
-				ret = send(client_sock, buffer, ret, 0);
-				if(ret == -1){
-					perror("send data to client error");
-					break;
-				}
-			}
-			else if(ret == 0) {
-				fprintf(stderr, "real server close socket.\n");
-				break;
-			}
-			else {
-				perror("recv from real server error");
-				break;
-			}
-		}
+
 	}
 	return SOCKS5_SUCCESS;
 }
@@ -376,7 +382,7 @@ int main(int argc, char *argv[]) {
 	}
 	fprintf(stderr, "==============================\n\n\n");
 
-	fprintf(stderr, "Welcome to connect_to_remote proxy server\n\n\n");
+	fprintf(stderr, "Welcome to socks5 proxy server\n\n\n");
 
 	fprintf(stderr, "==============================\n");
 	int s, proxy_sock;
@@ -394,7 +400,6 @@ int main(int argc, char *argv[]) {
 	}
 
 
-
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
 		proxy_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 		if (proxy_sock == -1){
@@ -409,6 +414,7 @@ int main(int argc, char *argv[]) {
 		}
 		close(proxy_sock);
 	}
+
 	freeaddrinfo(result);
 
 	if(proxy_sock < 0){
