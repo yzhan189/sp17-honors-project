@@ -187,8 +187,7 @@ int ack_request(int client_sock) {
 	else if((unsigned)recv_buffer[3] == SOCKS5_DOMAIN) {
 		char domain_length[2] = {0};
 		memcpy(domain_length, recv_ptr + 4, 1);
-		//  = *(&conn_request -> address_type
-		// 	           + sizeof(conn_request -> address_type));
+		
 		char target_domain[256] = {0};
 
  		strncpy(target_domain, recv_ptr + 5, (unsigned int)(domain_length[0]));
@@ -201,8 +200,8 @@ int ack_request(int client_sock) {
 			close(client_sock);
 			return SOCKS5_ERROR_TARGET;
 		 }
-		 memcpy(&target_server_addr.sin_addr , phost -> h_addr_list[0] , phost -> h_length);
 
+		 memcpy(&target_server_addr.sin_addr , phost -> h_addr_list[0] , phost -> h_length);
 		 memcpy(&target_server_addr.sin_port, recv_ptr + 5 + (unsigned int)(domain_length[0]), 2);
 		 fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
 
