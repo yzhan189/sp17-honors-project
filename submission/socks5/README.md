@@ -5,24 +5,26 @@
 4. Code clean up
 
 ## Demo idea
-### Basic connection status
+### 1. Basic connection status
 use netstat -tlnp before and after running the server and prove there is a new tunnel establied by the proxy
 
-### Hide ip address
+### 2. Hide ip address
 Use "checkmyip before and after connecting to the proxy, proving that ip is changed.
 Prereq: Need to running proxy on VM, otherwise the ip addr is not affected.
 
 Alter: 
 use terminal to find local ip instead of checkmyip
 
-### Authentication
+### 3. Authentication
 1. Use curl command to request a website with correct password and username and pipe the result into a html file, proving the website get the request successfully by opening it on web browser
 2. Use curl cmd with wrong password, and show error msg for SOCKS_ERROR_AUTH
 
 Alter:
 1. Use Firefoxy with correct username and password to visit website, and prove it works fine.
 2. Use it again with wrong password, and prove it doesn't work
-
+### 4. Block website
+Prereq: VM
+sudo 
 
 ## useful termianl cmd
 1. curl --proxy socks5://admin:12345@localhost:1997 www.google.com --> fail authentication
