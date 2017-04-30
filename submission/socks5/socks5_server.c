@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
 	#ifdef SO_NOSIGPIPE
 	    if (-1 == setsockopt(proxy_sock, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval))) {
-	        printf("setsockopt SO_NOSIGPIPE fail.\n");
+	        PRINTF(LEVEL_ERROR, "setsockopt SO_NOSIGPIPE fail.\n");
 	        return -1;
 	    }
 	#endif
@@ -163,7 +163,7 @@ int select_method(int client_sock) {
 
 		return SOCKS5_ERROR_METHOD;
 	}
-	*resp_ptr ++ = AUTH_CODE;
+	*resp_ptr ++ = AUTH_MODE;
 	if(send(client_sock, resp_buffer, 2, 0) == -1) {
 		close(client_sock);
 		return SOCKS5_ERROR_SEND;
