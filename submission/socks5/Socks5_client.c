@@ -4,7 +4,6 @@
 // #include "utils.h"
 // #include "encrypt.h"
 
-
 #include "Socks5.h"
 #include <errno.h>
 #include <netdb.h>
@@ -21,7 +20,55 @@
 
 
 static volatile int serverSocket;
+
+//network
 void close_program(int signal);
+void close_server_connection();
+int connect_to_server(const char* host, const char* port, const char *username,
+	const char *password, const char *target_domain, const char* target_port);
+
+
+
+
+
+
+
+
+int main(int argc, char **argv) {
+
+    if (argc != 7) {
+        fprintf(stderr, "Usage: %s <host> <port> <username> <password> <target_domain> <target_port>\n",
+                argv[0]);
+        return SOCKS5_ERROR_USAGE;
+    }
+
+
+    signal(SIGINT, close_program);
+    serverSocket = connect_to_server(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
+
+	if(serverSocket == SOCKS5_ERROR_AUTH) {
+		fprintf(stderr, "UNAUTHORIZED USER!\n");
+		return serverSocket;
+	}
+
+	char *buffer = "GET / HTTP/1.0\r\n\r\n";
+	printf("SENDING: %s", buffer);
+	printf("===\n");
+	write(serverSocket, buffer, strlen(buffer));
+
+
+	char resp[1000];
+	int len = read(serverSocket, resp, 999);
+	resp[len] = '\0';
+	printf("%s\n", resp);
+    // char resp[1000];
+    // int len = 0;
+    // while ((len = read (serverSocket, resp, 999)) > 0) {
+	//     resp[len] = '\0';
+	//     printf("%s\n", resp);
+    // }
+    return SOCKS5_SUCCESS;
+}
 
 /**
  * Shuts down connection with 'serverSocket'.
@@ -33,6 +80,14 @@ void close_server_connection() {
 	close(serverSocket);
 }
 
+/*
+ * Signal handler used to close this client program.
+ */
+void close_program(int signal) {
+    if (signal == SIGINT) {
+        close_server_connection();
+    }
+}
 /**
  * Sets up a connection to a proxy server and returns
  * the file descriptor associated with the connection.
@@ -191,51 +246,4 @@ int connect_to_server(const char* host, const char* port, const char *username,
 
 	}
 	return ret;
-}
-
-
-
-/*
- * Signal handler used to close this client program.
- */
-void close_program(int signal) {
-    if (signal == SIGINT) {
-        close_server_connection();
-    }
-}
-
-int main(int argc, char **argv) {
-
-    if (argc != 7) {
-        fprintf(stderr, "Usage: %s <host> <port> <username> <password> <target_domain> <target_port>\n",
-                argv[0]);
-        return SOCKS5_ERROR_USAGE;
-    }
-
-
-    signal(SIGINT, close_program);
-    serverSocket = connect_to_server(argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
-
-	if(serverSocket == SOCKS5_ERROR_AUTH) {
-		fprintf(stderr, "UNAUTHORIZED USER!\n");
-		return serverSocket;
-	}
-
-	char *buffer = "GET / HTTP/1.0\r\n\r\n";
-	printf("SENDING: %s", buffer);
-	printf("===\n");
-	write(serverSocket, buffer, strlen(buffer));
-
-
-	char resp[1000];
-	int len = read(serverSocket, resp, 999);
-	resp[len] = '\0';
-	printf("%s\n", resp);
-    // char resp[1000];
-    // int len = 0;
-    // while ((len = read (serverSocket, resp, 999)) > 0) {
-	//     resp[len] = '\0';
-	//     printf("%s\n", resp);
-    // }
-    return SOCKS5_SUCCESS;
 }
