@@ -13,7 +13,7 @@
 #define MAX_USER 10
 #define BUFF_SIZE 1024
 
-#define AUTH_CODE 0x02
+#define AUTH_MODE 0x02
 
 #define TIME_OUT 6000000
 
