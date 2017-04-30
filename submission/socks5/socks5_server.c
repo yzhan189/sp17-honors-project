@@ -27,6 +27,97 @@
 #define PASSWORD "123"
 
 int secret[8] = { 125,126,173,225,233,241,296,374 };
+int select_method(int client_sock);
+void encrypt(char* origin,size_t len,int * key,int key_len);
+int auth_client(int client_sock);
+int ack_request(int client_sock);
+int transfer_data(int client_sock, int target_server_sock);
+int connect_to_remote(void *client_fd);
+
+
+
+int main(int argc, char *argv[]) {
+	if(argc != 2) {
+		fprintf(stderr, "connect_to_remote proxy for test\n");
+		fprintf(stderr, "Usage: %s <proxy_port>\n", argv[0]);
+		return SOCKS5_ERROR_USAGE;
+	}
+	fprintf(stderr, "==============================\n\n\n");
+
+	fprintf(stderr, "Welcome to socks5 proxy server\n\n\n");
+
+	fprintf(stderr, "==============================\n");
+	int s, proxy_sock;
+
+
+	struct addrinfo hints, *result, *rp;
+	bzero(&hints, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+	s = getaddrinfo(NULL, argv[1], &hints, &result);
+	if (s != 0) {
+	   fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+	   exit(1);
+	}
+
+
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		proxy_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (proxy_sock == -1){
+			continue;
+		}
+		if (bind(proxy_sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+			break;                  /* Success */
+		}
+		else {
+			perror("bind error");
+			return SOCKS5_ERROR_BIND;
+		}
+		close(proxy_sock);
+	}
+
+	freeaddrinfo(result);
+
+	if(proxy_sock < 0){
+		perror("socket error");
+		return SOCKS5_ERROR_SOCKET;
+	}
+	// setsockopt
+	int optval = 1;
+	setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &optval, sizeof(optval));
+	// setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+
+	#ifdef SO_NOSIGPIPE
+	    if (-1 == setsockopt(proxy_sock, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval))) {
+	        PRINTF(LEVEL_ERROR, "setsockopt SO_NOSIGPIPE fail.\n");
+	        return -1;
+	    }
+	#endif
+	if(listen(proxy_sock, MAX_USER) < 0) {
+		perror("Listen error");
+		return SOCKS5_ERROR_LISTEN;
+	}
+
+	struct sockaddr_in client_addr;
+	int client_sock;
+	int client_len = sizeof(struct sockaddr_in);
+	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
+
+	while((client_sock = accept(proxy_sock, (struct sockaddr *)&client_addr, (socklen_t *)&client_len))) {
+		fprintf(stderr, "Connected from %s, processing......\n", inet_ntoa(client_addr.sin_addr));
+		pthread_t tid;
+		if(pthread_create(&tid, NULL, (void *)connect_to_remote, (void *)&client_sock)) {
+			perror("Thread error...");
+			close(client_sock);
+		}
+		else {
+			pthread_detach(tid);
+		}
+	}
+}
+
+
 
 void encrypt(char* origin,size_t len,int * key,int key_len){
     int i;
@@ -182,17 +273,14 @@ int ack_request(int client_sock) {
 		memcpy(&target_server_addr.sin_addr.s_addr, recv_ptr + 4, 4);
 		memcpy(&target_server_addr.sin_port, recv_ptr + 4 + 4, 2);
 
-		fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
 	}
 	else if((unsigned)recv_buffer[3] == SOCKS5_DOMAIN) {
 		char domain_length[2] = {0};
 		memcpy(domain_length, recv_ptr + 4, 1);
-		
+
 		char target_domain[256] = {0};
 
  		strncpy(target_domain, recv_ptr + 5, (unsigned int)(domain_length[0]));
-
-		fprintf(stderr, "target: %s\n", target_domain);
 
 		 struct hostent *phost = gethostbyname(target_domain);
 		 if(phost == NULL) {
@@ -203,10 +291,10 @@ int ack_request(int client_sock) {
 
 		 memcpy(&target_server_addr.sin_addr , phost -> h_addr_list[0] , phost -> h_length);
 		 memcpy(&target_server_addr.sin_port, recv_ptr + 5 + (unsigned int)(domain_length[0]), 2);
-		 fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
 
 	}
 	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
+	fprintf(stderr, "target_server: %s %d\n", inet_ntoa(target_server_addr.sin_addr), ntohs(target_server_addr.sin_port));
 
 	// try to connect to real server
 	int target_server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -371,85 +459,4 @@ int connect_to_remote(void *client_fd) {
 	close(target_server_sock);
 
 	return SOCKS5_SUCCESS;
-}
-
-int main(int argc, char *argv[]) {
-	if(argc != 2) {
-		fprintf(stderr, "connect_to_remote proxy for test\n");
-		fprintf(stderr, "Usage: %s <proxy_port>\n", argv[0]);
-		return SOCKS5_ERROR_USAGE;
-	}
-	fprintf(stderr, "==============================\n\n\n");
-
-	fprintf(stderr, "Welcome to socks5 proxy server\n\n\n");
-
-	fprintf(stderr, "==============================\n");
-	int s, proxy_sock;
-
-
-	struct addrinfo hints, *result, *rp;
-	bzero(&hints, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-	s = getaddrinfo(NULL, argv[1], &hints, &result);
-	if (s != 0) {
-	   fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-	   exit(1);
-	}
-
-
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		proxy_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (proxy_sock == -1){
-			continue;
-		}
-		if (bind(proxy_sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-			break;                  /* Success */
-		}
-		else {
-			perror("bind error");
-			return SOCKS5_ERROR_BIND;
-		}
-		close(proxy_sock);
-	}
-
-	freeaddrinfo(result);
-
-	if(proxy_sock < 0){
-		perror("socket error");
-		return SOCKS5_ERROR_SOCKET;
-	}
-	// setsockopt
-	int optval = 1;
-	setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &optval, sizeof(optval));
-	// setsockopt(proxy_sock, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-
-	#ifdef SO_NOSIGPIPE
-	    if (-1 == setsockopt(proxy_sock, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval))) {
-	        PRINTF(LEVEL_ERROR, "setsockopt SO_NOSIGPIPE fail.\n");
-	        return -1;
-	    }
-	#endif
-	if(listen(proxy_sock, MAX_USER) < 0) {
-		perror("Listen error");
-		return SOCKS5_ERROR_LISTEN;
-	}
-
-	struct sockaddr_in client_addr;
-	int client_sock;
-	int client_len = sizeof(struct sockaddr_in);
-	fprintf(stderr, "%s reached line %d in %s\n", __FILE__,__LINE__,__FUNCTION__);
-
-	while((client_sock = accept(proxy_sock, (struct sockaddr *)&client_addr, (socklen_t *)&client_len))) {
-		fprintf(stderr, "Connected from %s, processing......\n", inet_ntoa(client_addr.sin_addr));
-		pthread_t tid;
-		if(pthread_create(&tid, NULL, (void *)connect_to_remote, (void *)&client_sock)) {
-			perror("Thread error...");
-			close(client_sock);
-		}
-		else {
-			pthread_detach(tid);
-		}
-	}
 }
