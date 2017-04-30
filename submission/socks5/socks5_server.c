@@ -3,6 +3,9 @@
  */
 //curl --socks5 localhost:1080 -u admin www.google.com
 //netstat -tlnp
+
+#include "Socks5.h"
+
 #include <stdio.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -14,21 +17,24 @@
 #include <pthread.h>
 #include <errno.h>
 #include <string.h>
-
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
 
-#include "Socks5.h"
 
-
-
+// macro
 #define USERNAME "admin"
 #define PASSWORD "123"
+// encryption secret
+int secret[8] = {125,126,173,225,233,241,296,374};
 
-int secret[8] = { 125,126,173,225,233,241,296,374 };
-int select_method(int client_sock);
+
+//encryption function
 void encrypt(char* origin,size_t len,int * key,int key_len);
+
+
+//network
+int select_method(int client_sock);
 int auth_client(int client_sock);
 int ack_request(int client_sock);
 int transfer_data(int client_sock, int target_server_sock);
@@ -205,8 +211,8 @@ int auth_client(int client_sock) {
 	strncpy(input_password, recv_ptr + 2 + (unsigned int)(username_len[0]) + 1, (unsigned int)(password_len[0]));
 	fprintf(stderr, "parse username: %s\npassword: %s\n", input_username, input_password);
 	// check username and password
-	if((strncmp(input_username, USERNAME, strlen(USERNAME)) == 0) &&
-				(strncmp(input_password, PASSWORD, strlen(PASSWORD)) == 0)){
+	if((strcmp(input_username, USERNAME) == 0) &&
+				(strcmp(input_password, PASSWORD) == 0)){
 		*resp_ptr ++ = 0x00;
 		if(send(client_sock, resp_buffer, 2, 0) == -1) {
 			close(client_sock);
@@ -219,9 +225,9 @@ int auth_client(int client_sock) {
 		}
 	}
 	else {
+		fprintf(stderr, "AUTH failed\n");
 		*resp_ptr ++ = 0x01;
 		send(client_sock, resp_buffer, 2, 0);
-
 		close(client_sock);
 		return SOCKS5_ERROR_AUTH;
 	}
