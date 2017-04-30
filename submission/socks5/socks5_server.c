@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
 	#ifdef SO_NOSIGPIPE
 	    if (-1 == setsockopt(proxy_sock, SOL_SOCKET, SO_NOSIGPIPE, &optval, sizeof(optval))) {
-	        PRINTF(LEVEL_ERROR, "setsockopt SO_NOSIGPIPE fail.\n");
+	        fprintf(stderr, "setsockopt SO_NOSIGPIPE fail.\n");
 	        return -1;
 	    }
 	#endif
