@@ -16,7 +16,6 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-//curl localhost:1080 -u admin http://www.google.com
 
 
 static volatile int serverSocket;
@@ -171,6 +170,7 @@ int connect_to_server(const char* host, const char* port, const char *username,
 		}
 		fprintf(stderr, "CLIENT AUTH PASS!\n");
 		// Authentication pass
+		// send connect cmd
 		pen = buffer;
 		*pen ++ = 5;
 
@@ -186,16 +186,24 @@ int connect_to_server(const char* host, const char* port, const char *username,
 		*pen ++ = strlen(target_domain);
 		strncpy(pen, target_domain, strlen(target_domain));
 		pen += strlen(target_domain);
-		strncpy(pen, target_port, strlen(target_port));
+		uint32_t port =  htons(atoi(target_port));
+		fprintf(stderr, "port: %d\n", port);
+		strncpy(pen, &port, sizeof(port));
 		pen += strlen(target_port);
 
-		fprintf(stderr, "AUTH: send %u byte to server\n", (unsigned)(pen - buffer));
-		send(serverSocket, buffer, pen-buffer, 0);
+		fprintf(stderr, "i want to go: %s[%s] %d\n", target_domain, inet_ntoa(*(struct in_addr*)&target_domain), port);
+
+		fprintf(stderr, "send %u byte to server\n", (unsigned)(pen - buffer));
+		send(serverSocket, buffer, pen - buffer, 0);
 		recv(serverSocket, buffer, 4, 0);
-		fprintf(stderr, "AUTH: recv %zu byte from server\n", strlen(buffer));
+		fprintf(stderr, "recv %zu byte from server\n", strlen(buffer));
 
 		if((unsigned int)*(buffer + 1) == 0x00) {
 			fprintf(stderr, "Success!" );
+		}
+		else {
+			perror("client connect to remote");
+			return SOCKS5_ERROR_CLIENT;
 		}
 
 	}
