@@ -1,9 +1,11 @@
 # sp17-honors-project
 
-Please check on our final work on fold "submission" :D
+*Please check on our final work on fold "submission" :D*
 
 
-=====================================================
+
+
+
 ## 3/10/2017
 To do: write SOCKS
 
